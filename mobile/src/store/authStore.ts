@@ -23,7 +23,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
   error: null,
 
   setUser: (user) => set({ user }),
-  setTokens: (token, refreshToken) => set({ token, refreshToken }),
+  setTokens: (token, refreshToken) => {
+    // Save to some persistent storage if needed here
+    set({ token, refreshToken });
+  },
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
   logout: () => set({ user: null, token: null, refreshToken: null }),

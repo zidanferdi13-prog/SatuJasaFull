@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p backend/src/modules/auth backend/src/modules/tenant backend/src/modules/transaction backend/src/shared/middleware backend/src/shared/utils backend/src/config backend/prisma)",
+      "Bash(npm init *)",
+      "Bash(npm install *)"
+    ]
+  }
+}
