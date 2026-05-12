@@ -7,7 +7,6 @@ export class Database {
     this.pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     });
-
     await this.pool.query('SELECT NOW()');
   }
 

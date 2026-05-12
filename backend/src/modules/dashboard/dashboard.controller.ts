@@ -10,4 +10,13 @@ export class DashboardController {
       return res.status(500).json({ error: error.message });
     }
   }
+
+  static async getAdminKpis(req: Request, res: Response) {
+    try {
+      const stats = await DashboardService.getAdminKpis();
+      return res.json(stats);
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
 }

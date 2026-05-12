@@ -8,22 +8,20 @@ import { authMiddleware, tenantContext, roleCheck } from './shared/middleware/au
 
 const router = Router();
 
-// Auth
+// ─── Public ──────────────────────────────────────────
 router.post('/auth/login', AuthController.login);
-router.post('/admin/tenants', authMiddleware, roleCheck(['SUPER_ADMIN']), AuthController.registerTenant);
+router.get('/tracking/:token', TrackingController.getStatus);
 
-// Admin
+// ─── Super Admin Only ────────────────────────────────
+router.post('/admin/tenants', authMiddleware, roleCheck(['SUPER_ADMIN']), AuthController.registerTenant);
 router.get('/admin/tenants', authMiddleware, roleCheck(['SUPER_ADMIN']), TenantController.list);
 router.patch('/admin/tenants/:id', authMiddleware, roleCheck(['SUPER_ADMIN']), TenantController.update);
+router.get('/admin/dashboard', authMiddleware, roleCheck(['SUPER_ADMIN']), DashboardController.getAdminKpis);
 
-// Dashboard
+// ─── Tenant/Bureau (Requires Auth + Tenant Context) ──
 router.get('/dashboard/kpis', authMiddleware, tenantContext, DashboardController.getKpis);
-
-// Transactions
 router.post('/transactions', authMiddleware, tenantContext, TransactionController.create);
 router.patch('/transactions/:id/status', authMiddleware, tenantContext, TransactionController.updateStatus);
-
-// Public Tracking
-router.get('/tracking/:token', TrackingController.getStatus);
+router.get('/transactions', authMiddleware, tenantContext, TransactionController.list);
 
 export default router;

@@ -6,9 +6,7 @@ export class TrackingController {
     try {
       const { token } = req.params;
       const data = await TrackingService.getByToken(token);
-
       if (!data) return res.status(404).json({ error: 'Tracking not found' });
-
       return res.json(data);
     } catch (error: any) {
       return res.status(500).json({ error: error.message });

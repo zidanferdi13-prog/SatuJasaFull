@@ -21,4 +21,13 @@ export class TransactionController {
       return res.status(400).json({ error: error.message });
     }
   }
+
+  static async list(req: Request, res: Response) {
+    try {
+      const result = await TransactionService.list(req.tenantId!, req.branchId);
+      return res.json(result);
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
 }

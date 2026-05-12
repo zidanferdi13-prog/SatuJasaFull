@@ -1,38 +1,33 @@
+import { Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
 
 export class TransactionService {
   static async create(tenantId: string, branchId: string, data: any) {
     const { customerId, items, dpAmount, estimatedFinishDate } = data;
 
-    // Generate Invoice Number: INV/CODE/YYYY/MM/XXXX
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
 
-    // In a real system, we would use a sequence table.
-    // For this implementation, we count transactions in current month for this tenant.
     const monthStart = new Date(year, now.getMonth(), 1);
     const count = await prisma.transaction.count({
-      where: {
-        tenantId,
-        createdAt: { gte: monthStart }
-      }
+      where: { tenantId, createdAt: { gte: monthStart } }
     });
 
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    const sequence = String(count + 1).padStart(4, '0');
-    const invoiceNumber = `INV/${tenant?.code}/${year}/${month}/${sequence}`;
-    const trackingCode = `TRX-${tenant?.code}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+    const seq = String(count + 1).padStart(4, '0');
+    const invoiceNumber = `INV/${tenant.code}/${year}/${month}/${seq}`;
+    const trackingCode = `TRX-${tenant.code}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-    return await prisma.$transaction(async (tx) => {
-      const transaction = await tx.transaction.create({
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const trx = await tx.transaction.create({
         data: {
           tenantId,
           branchId,
           customerId,
           invoiceNumber,
           trackingCode,
-          status: 'ON_PROCESS', // Start directly as process for speed
+          status: 'ON_PROCESS',
           dpAmount,
           estimatedFinishDate: estimatedFinishDate ? new Date(estimatedFinishDate) : null,
           items: {
@@ -43,13 +38,12 @@ export class TransactionService {
             }))
           }
         },
-        include: { items: true }
+        include: { items: { include: { service: true, vehicle: true } } }
       });
 
-      // Update totals
-      const total = transaction.items.reduce((sum, item) => sum + Number(item.price), 0);
+      const total = trx.items.reduce((s: number, i: any) => s + Number(i.price), 0);
       await tx.transaction.update({
-        where: { id: transaction.id },
+        where: { id: trx.id },
         data: {
           estimatedTotal: total,
           finalTotal: total,
@@ -57,53 +51,47 @@ export class TransactionService {
         }
       });
 
-      return transaction;
+      return tx.transaction.findUnique({
+        where: { id: trx.id },
+        include: { items: { include: { service: true, vehicle: true } }, customer: true }
+      });
     });
   }
 
   static async updateStatus(id: string, tenantId: string, toStatus: string, notes?: string) {
-    const transaction = await prisma.transaction.findFirst({
-      where: { id, tenantId }
-    });
+    const trx = await prisma.transaction.findFirst({ where: { id, tenantId } });
+    if (!trx) throw new Error('Transaction not found');
 
-    if (!transaction) throw new Error('Transaction not found');
-
-    // Simple state machine check
-    const validTransitions: any = {
-      'DRAFT': ['ON_PROCESS'],
-      'ON_PROCESS': ['READY_TO_PICKUP'],
-      'READY_TO_PICKUP': ['COMPLETED'],
-      'COMPLETED': ['CLOSED']
+    const transitions: Record<string, string[]> = {
+      DRAFT: ['ON_PROCESS'],
+      ON_PROCESS: ['READY_TO_PICKUP'],
+      READY_TO_PICKUP: ['COMPLETED'],
+      COMPLETED: ['CLOSED']
     };
 
-    if (transaction.status !== 'DRAFT' && !validTransitions[transaction.status]?.includes(toStatus)) {
-      throw new Error(`Invalid transition from ${transaction.status} to ${toStatus}`);
+    if (!transitions[trx.status]?.includes(toStatus)) {
+      throw new Error(`Invalid transition: ${trx.status} -> ${toStatus}`);
     }
 
-    return await prisma.$transaction(async (tx) => {
-      const updated = await tx.transaction.update({
-        where: { id },
-        data: { status: toStatus }
-      });
-
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const updated = await tx.transaction.update({ where: { id }, data: { status: toStatus } });
       await tx.transactionLog.create({
-        data: {
-          transactionId: id,
-          fromStatus: transaction.status,
-          toStatus,
-          notes
-        }
+        data: { transactionId: id, fromStatus: trx.status, toStatus, notes }
       });
 
-      // Logic for CLOSED (final payment)
       if (toStatus === 'CLOSED') {
-        await tx.transaction.update({
-          where: { id },
-          data: { remainingAmount: 0 }
-        });
+        await tx.transaction.update({ where: { id }, data: { remainingAmount: 0 } });
       }
 
       return updated;
+    });
+  }
+
+  static async list(tenantId: string, branchId?: string) {
+    return prisma.transaction.findMany({
+      where: { tenantId, branchId: branchId || undefined },
+      include: { customer: true, items: { include: { service: true, vehicle: true } } },
+      orderBy: { createdAt: 'desc' }
     });
   }
 }

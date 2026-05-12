@@ -1,40 +1,28 @@
 import client from './client';
 
 export const transactionAPI = {
-  list: async (limit = 20, offset = 0) => {
-    const response = await client.get('/transactions', {
-      params: { limit, offset },
-    });
-    return response.data;
+  list: async () => {
+    const { data } = await client.get('/transactions');
+    return data;
   },
 
-  get: async (id: string) => {
-    const response = await client.get(`/transactions/${id}`);
-    return response.data;
-  },
-
-  create: async (data: {
-    customer_id?: string;
-    customer_data?: {
-      name: string;
-      phone: string;
-      email?: string;
-      vehicle_number?: string;
-    };
-    service_id: string;
-    payment_method?: string;
+  create: async (payload: {
+    customerId: string;
+    items: { vehicleId: string; serviceId: string; price: number }[];
+    dpAmount: number;
+    estimatedFinishDate?: string;
   }) => {
-    const response = await client.post('/transactions', data);
-    return response.data;
+    const { data } = await client.post('/transactions', payload);
+    return data;
   },
 
-  updateStatus: async (id: string, status: string) => {
-    const response = await client.put(`/transactions/${id}`, { status });
-    return response.data;
+  updateStatus: async (id: string, status: string, notes?: string) => {
+    const { data } = await client.patch(`/transactions/${id}/status`, { status, notes });
+    return data;
   },
 
-  getDailyRevenue: async () => {
-    const response = await client.get('/dashboard/revenue');
-    return response.data;
+  getDashboardKpis: async () => {
+    const { data } = await client.get('/dashboard/kpis');
+    return data;
   },
 };

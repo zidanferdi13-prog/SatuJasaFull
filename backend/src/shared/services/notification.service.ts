@@ -1,6 +1,6 @@
-import { Queue, Worker } from 'bullmq';
+import { Queue, Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
-import prisma from '../config/prisma';
+import prisma from '../../config/prisma';
 
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
@@ -8,40 +8,52 @@ const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379'
 
 export const whatsappQueue = new Queue('whatsapp-notifications', { connection });
 
-export const whatsappWorker = new Worker(
-  'whatsapp-notifications',
-  async (job) => {
-    const { phone, message, mediaUrl, tenantId } = job.data;
+export const initializeWorker = () => {
+  const worker = new Worker(
+    'whatsapp-notifications',
+    async (job: Job) => {
+      const { phone, message, mediaUrl } = job.data;
 
-    // Create queue record in DB
-    const dbRecord = await prisma.whatsappQueue.create({
-      data: { phone, message, mediaUrl, status: 'PENDING' }
-    });
-
-    try {
-      console.log(`Sending WA to ${phone}: ${message}`);
-      // Integrate with Twilio or another WA API provider here
-      // await twilioClient.messages.create({ ... })
-
-      await prisma.whatsappQueue.update({
-        where: { id: dbRecord.id },
-        data: { status: 'SENT', updatedAt: new Date() }
+      const dbRecord = await prisma.whatsappQueue.create({
+        data: { phone, message, mediaUrl, status: 'PENDING' }
       });
-    } catch (error: any) {
-      await prisma.whatsappQueue.update({
-        where: { id: dbRecord.id },
-        data: {
-          status: 'FAILED',
-          error: error.message,
-          attempts: { increment: 1 },
-          updatedAt: new Date()
-        }
-      });
-      throw error;
+
+      try {
+        // TODO: Replace with actual Twilio/WhatsApp API call
+        console.log(`[WA SENT] To: ${phone} | Message: ${message.substring(0, 50)}...`);
+
+        await prisma.whatsappQueue.update({
+          where: { id: dbRecord.id },
+          data: { status: 'SENT', updatedAt: new Date() }
+        });
+
+        return { success: true, to: phone };
+      } catch (error: any) {
+        await prisma.whatsappQueue.update({
+          where: { id: dbRecord.id },
+          data: { status: 'FAILED', error: error.message, attempts: { increment: 1 }, updatedAt: new Date() }
+        });
+        throw error;
+      }
+    },
+    {
+      connection,
+      concurrency: 5,
+      limiter: { max: 10, duration: 1000 }
     }
-  },
-  {
-    connection,
-    limiter: { max: 10, duration: 1000 } // 10 messages per second
-  }
-);
+  );
+
+  worker.on('failed', (job, err) => {
+    console.error(`[WA FAILED] Job ${job?.id}: ${err.message}`);
+  });
+
+  return worker;
+};
+
+export const enqueueWhatsApp = async (phone: string, message: string, mediaUrl?: string) => {
+  await whatsappQueue.add(
+    'send',
+    { phone, message, mediaUrl },
+    { attempts: 5, backoff: { type: 'exponential', delay: 5000 } }
+  );
+};

@@ -4,83 +4,94 @@ import { useEffect, useState } from 'react';
 import client from '../api/client';
 import styles from './page.module.css';
 
-interface Bureau {
-  id: string;
-  name: string;
-  status: string;
-  subscription_plan: string;
+interface AdminKpis {
+  totalTenants: number;
+  activeTenants: number;
+  totalTransactions: number;
+  expiredSubscriptions: number;
 }
 
 export default function Dashboard() {
-  const [bureaus, setBureaus] = useState<Bureau[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [kpis, setKpis] = useState<AdminKpis | null>(null);
+  const [tenants, setTenants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadBureaus();
+    Promise.all([loadKpis(), loadTenants()]).finally(() => setLoading(false));
   }, []);
 
-  const loadBureaus = async () => {
-    setIsLoading(true);
+  const loadKpis = async () => {
     try {
-      const response = await client.get('/admin/bureaus');
-      setBureaus(response.data.data || []);
-    } catch (error) {
-      console.error('Error loading bureaus:', error);
-    } finally {
-      setIsLoading(false);
-    }
+      const { data } = await client.get('/admin/dashboard');
+      setKpis(data);
+    } catch (err) { console.error('Failed to load KPIs', err); }
+  };
+
+  const loadTenants = async () => {
+    try {
+      const { data } = await client.get('/admin/tenants');
+      setTenants(data);
+    } catch (err) { console.error('Failed to load tenants', err); }
   };
 
   return (
     <div className={styles.dashboard}>
       <div className={styles.header}>
-        <h1>Dashboard</h1>
-        <p>Selamat datang di STNK Bureau Admin</p>
+        <h1>Super Admin Dashboard</h1>
+        <p>Platform monitoring & tenant management</p>
       </div>
 
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>{bureaus.length}</div>
-          <div className={styles.statLabel}>Total Bureaus</div>
+          <div className={styles.statValue}>{kpis?.totalTenants || 0}</div>
+          <div className={styles.statLabel}>Total Tenants</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue}>{bureaus.filter((b) => b.status === 'ACTIVE').length}</div>
-          <div className={styles.statLabel}>Active Bureaus</div>
+          <div className={styles.statValue}>{kpis?.activeTenants || 0}</div>
+          <div className={styles.statLabel}>Active Tenants</div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statValue}>{kpis?.totalTransactions || 0}</div>
+          <div className={styles.statLabel}>Total Transactions</div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statValue} style={{ color: '#c62828' }}>{kpis?.expiredSubscriptions || 0}</div>
+          <div className={styles.statLabel}>Expired Subs</div>
         </div>
       </div>
 
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2>Bureaus</h2>
-          <a href="/bureaus" className={styles.link}>
-            View All →
-          </a>
+          <h2>Tenants</h2>
+          <a href="/tenants" className={styles.link}>Manage All →</a>
         </div>
 
-        {isLoading ? (
-          <p>Loading...</p>
-        ) : bureaus.length === 0 ? (
-          <p className={styles.empty}>No bureaus found</p>
-        ) : (
+        {loading ? <p>Loading...</p> : (
           <div className={styles.table}>
             <div className={styles.tableHeader}>
-              <div className={styles.tableCell}>Name</div>
+              <div className={styles.tableCell}>Name / Code</div>
+              <div className={styles.tableCell}>Sub End</div>
+              <div className={styles.tableCell}>Trx</div>
               <div className={styles.tableCell}>Status</div>
-              <div className={styles.tableCell}>Plan</div>
             </div>
-            {bureaus.slice(0, 5).map((bureau) => (
-              <div key={bureau.id} className={styles.tableRow}>
-                <div className={styles.tableCell}>{bureau.name}</div>
+            {tenants.slice(0, 10).map((t: any) => (
+              <div key={t.id} className={styles.tableRow}>
                 <div className={styles.tableCell}>
-                  <span
-                    className={`${styles.badge} ${styles[`badge${bureau.status}`]}`}
-                  >
-                    {bureau.status}
+                  <strong>{t.name}</strong>
+                  <div style={{ fontSize: 12, color: '#007AFF' }}>{t.code}</div>
+                </div>
+                <div className={styles.tableCell}>
+                  <span style={{ color: new Date(t.subscriptionEnd) < new Date() ? '#c62828' : 'inherit' }}>
+                    {new Date(t.subscriptionEnd).toLocaleDateString()}
                   </span>
                 </div>
-                <div className={styles.tableCell}>{bureau.subscription_plan}</div>
+                <div className={styles.tableCell}>{t._count?.transactions || 0}</div>
+                <div className={styles.tableCell}>
+                  <span className={`${styles.badge} ${styles[`badge${t.status}`]}`}>{t.status}</span>
+                </div>
               </div>
             ))}
+            {tenants.length === 0 && <p className={styles.empty}>No tenants yet</p>}
           </div>
         )}
       </div>

@@ -1,192 +1,71 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  FlatList,
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { useState, useEffect } from 'react';
 import { transactionAPI } from '../api/transactions';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+
+const STATUS_COLORS: Record<string, string> = {
+  DRAFT: '#9E9E9E',
+  ON_PROCESS: '#FF9800',
+  READY_TO_PICKUP: '#2196F3',
+  COMPLETED: '#4CAF50',
+  CLOSED: '#333',
+};
 
 export default function HistoryScreen() {
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadTransactions();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const loadTransactions = async () => {
-    setIsLoading(true);
+  const load = async () => {
     try {
-      const response = await transactionAPI.list(50, 0);
-      setTransactions(response.data || []);
-    } catch (error) {
-      console.error('Error loading transactions:', error);
-    } finally {
-      setIsLoading(false);
-    }
+      const data = await transactionAPI.list();
+      setTransactions(data);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
-  const onRefresh = async () => {
-    setIsRefreshing(true);
-    await loadTransactions();
-    setIsRefreshing(false);
-  };
+  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return '#4CAF50';
-      case 'PENDING':
-        return '#FF9800';
-      case 'FAILED':
-        return '#F44336';
-      default:
-        return '#999';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'check-circle';
-      case 'PENDING':
-        return 'clock';
-      case 'FAILED':
-        return 'alert-circle';
-      default:
-        return 'file-document';
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
+  if (loading) return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color="#007AFF" /></View>;
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={transactions}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.transactionCard}>
-            <View style={styles.cardHeader}>
-              <MaterialCommunityIcons
-                name={getStatusIcon(item.status)}
-                size={24}
-                color={getStatusColor(item.status)}
-              />
-              <View style={styles.cardInfo}>
-                <Text style={styles.customerName}>{item.customer_name}</Text>
-                <Text style={styles.serviceName}>{item.service_name}</Text>
-              </View>
-              <Text style={styles.amount}>Rp {(item.final_price || 0).toLocaleString('id-ID')}</Text>
+    <FlatList
+      data={transactions}
+      keyExtractor={(item) => item.id}
+      contentContainerStyle={styles.list}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      ListEmptyComponent={<View style={styles.center}><Ionicons name="inbox-outline" size={48} color="#ccc" /><Text style={{ color: '#999', marginTop: 8 }}>No transactions</Text></View>}
+      renderItem={({ item }) => (
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>{item.customer?.name || '-'}</Text>
+              <Text style={styles.invoice}>{item.invoiceNumber}</Text>
             </View>
-            <View style={styles.cardFooter}>
-              <Text style={styles.date}>
-                {new Date(item.created_at).toLocaleDateString('id-ID')}
-              </Text>
-              <Text style={[styles.status, { color: getStatusColor(item.status) }]}>
-                {item.status}
-              </Text>
-            </View>
+            <Text style={styles.amount}>Rp {Number(item.finalTotal || 0).toLocaleString('id-ID')}</Text>
           </View>
-        )}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="inbox" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>Tidak ada transaksi</Text>
+          <View style={styles.footer}>
+            <Text style={styles.date}>{new Date(item.createdAt).toLocaleDateString('id-ID')}</Text>
+            <Text style={[styles.status, { color: STATUS_COLORS[item.status] || '#999' }]}>{item.status}</Text>
           </View>
-        }
-        contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
-      />
-    </View>
+        </View>
+      )}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 24,
-  },
-  transactionCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  cardInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  customerName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  serviceName: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4,
-  },
-  amount: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#333',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  date: {
-    fontSize: 12,
-    color: '#999',
-  },
-  status: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 80,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 12,
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  center: { justifyContent: 'center', alignItems: 'center', paddingVertical: 80 },
+  list: { padding: 16 },
+  card: { backgroundColor: 'white', borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2 },
+  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  name: { fontSize: 15, fontWeight: '600', color: '#333' },
+  invoice: { fontSize: 12, color: '#007AFF', marginTop: 2, fontFamily: 'monospace' },
+  amount: { fontSize: 15, fontWeight: '700', color: '#333' },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10 },
+  date: { fontSize: 12, color: '#999' },
+  status: { fontSize: 12, fontWeight: '700' },
 });

@@ -1,5 +1,13 @@
 import { create } from 'zustand';
-import { User } from '../types';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  tenantCode: string;
+  tenantName: string;
+}
 
 interface AuthStore {
   user: User | null;
@@ -23,15 +31,19 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   setUser: (user) => set({ user }),
   setToken: (token) => {
-    if (token) localStorage.setItem('token', token);
-    else localStorage.removeItem('token');
+    if (typeof window !== 'undefined') {
+      if (token) localStorage.setItem('token', token);
+      else localStorage.removeItem('token');
+    }
     set({ token });
   },
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
     set({ user: null, token: null });
   },
   initFromStorage: () => {

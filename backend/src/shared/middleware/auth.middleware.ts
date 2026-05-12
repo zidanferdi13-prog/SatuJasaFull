@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken';
 
 export interface UserPayload {
   id: string;
-  tid: string; // tenantId
-  bid: string; // branchId
+  tid: string;
+  bid: string;
   role: string;
   code: string;
 }
@@ -26,12 +26,13 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   }
 
   const token = authHeader.split(' ')[1];
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as UserPayload;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'jwt-secret-key') as UserPayload;
     req.user = decoded;
     next();
-  } catch (error) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+  } catch (err) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
   }
 };
 
@@ -40,10 +41,8 @@ export const tenantContext = (req: Request, res: Response, next: NextFunction) =
     return res.status(401).json({ error: 'Unauthorized: User context missing' });
   }
 
-  // Inject tenant and branch from JWT - never trust frontend for these
   req.tenantId = req.user.tid;
   req.branchId = req.user.bid;
-
   next();
 };
 
@@ -54,4 +53,9 @@ export const roleCheck = (roles: string[]) => {
     }
     next();
   };
+};
+
+export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled error:', err.message);
+  res.status(500).json({ error: 'Internal server error' });
 };
