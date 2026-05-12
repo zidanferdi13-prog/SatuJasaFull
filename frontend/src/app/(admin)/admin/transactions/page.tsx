@@ -1,21 +1,21 @@
 'use client';
 
-import { useTransactions } from '../../modules/transactions/hooks/useTransactions';
-import { PageHeader } from '../../shared/components/PageHeader';
-import { StatusBadge } from '../../shared/components/StatusBadge';
-import { LoadingState } from '../../shared/components/LoadingState';
-import { EmptyState } from '../../shared/components/EmptyState';
-import { DataTable } from '../../shared/components/DataTable';
-import { Transaction } from '../../shared/types';
-import { formatCurrency, formatDateTime } from '../../shared/utils/format';
+import { useTransactions } from '../../../../modules/transactions/hooks/useTransactions';
+import { PageHeader } from '../../../../shared/components/PageHeader';
+import { StatusBadge } from '../../../../shared/components/StatusBadge';
+import { LoadingState } from '../../../../shared/components/LoadingState';
+import { EmptyState } from '../../../../shared/components/EmptyState';
+import { DataTable } from '../../../../shared/components/DataTable';
+import { Transaction } from '../../../../shared/types';
+import { formatCurrency, formatDateTime } from '../../../../shared/utils/format';
 
-export default function TransactionsPage() {
+export default function AdminTransactionsPage() {
   const { data: transactions, isLoading } = useTransactions();
 
   if (isLoading) return <LoadingState />;
 
   return (
-    <div style={{ padding: '24px 0' }}>
+    <div>
       <PageHeader
         title="Transactions"
         subtitle="Monitor all platform transactions"
@@ -38,17 +38,17 @@ export default function TransactionsPage() {
             {
               key: 'customer',
               header: 'Customer',
-              render: (t: Transaction) => t.customer?.name || '-',
+              render: (t: Transaction) => t.customer?.name ?? '-',
             },
             {
               key: 'tenant',
               header: 'Tenant',
-              render: (t: Transaction) => t.tenant?.code || '-',
+              render: (t: Transaction) => t.tenant?.code ?? '-',
             },
             {
               key: 'total',
               header: 'Total',
-              render: (t: Transaction) => formatCurrency(t.finalTotal || t.estimatedTotal || 0),
+              render: (t: Transaction) => formatCurrency(t.finalTotal ?? t.estimatedTotal ?? 0),
             },
             {
               key: 'status',

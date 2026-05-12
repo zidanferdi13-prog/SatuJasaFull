@@ -1,8 +1,10 @@
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '../services/dashboard.service';
 
 export function useAdminDashboard() {
-  return useQuery('admin-dashboard', dashboardService.getAdminKpis, {
+  return useQuery({
+    queryKey: ['admin-dashboard'],
+    queryFn: dashboardService.getAdminKpis,
     refetchInterval: 30_000,
   });
 }

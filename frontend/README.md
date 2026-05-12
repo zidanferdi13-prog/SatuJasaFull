@@ -1,195 +1,98 @@
-# STNK Bureau SaaS — Frontend Architecture Master Document
+# Frontend — Web Admin Dashboard
 
-## Overview
+Next.js + TypeScript admin dashboard for STNK Bureau Service Management SaaS Platform.
 
-Enterprise-grade multi-tenant SaaS frontend architecture for Indonesian STNK Bureau Service Management Platform.
-
-This document finalizes:
-
-1. Frontend README Architecture
-2. Frontend Folder Structure
-3. Frontend Routing Structure
-4. API Contract Standard
-
----
-
-# 1. FRONTEND README ARCHITECTURE
-
-# Frontend - Web Admin Dashboard
-
-React/Next.js + TypeScript admin dashboard for STNK Bureau Service Management SaaS Platform.
+> Full architecture reference: [`Doc/FRONTEND-ARCHITECTURE.md`](../Doc/FRONTEND-ARCHITECTURE.md)
 
 ---
 
 ## Tech Stack
 
-### Core
+| Concern | Library |
+|:--------|:--------|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript 5.x |
+| Server State | TanStack Query 5 |
+| Client State | Zustand 4 |
+| Forms | React Hook Form + Zod |
+| HTTP | Axios |
+| Charts | Recharts |
+| UI Kit | ShadCN UI + Tailwind CSS |
 
-* Next.js (App Router)
-* React
-* TypeScript
-* Tailwind CSS
-* Zustand
-* TanStack Query
-* Axios
-* React Hook Form
-* Zod
-* Recharts
-* ShadCN UI
-
-### Architecture
+### Architecture Patterns
 
 * Feature-Based Modular Architecture
 * Shared UI System
 * Multi-Tenant SaaS Architecture
-* JWT Authentication
-* Role-Based Access Control
+* JWT Authentication with silent refresh
+* Role-Based Access Control (SUPER_ADMIN / OWNER / ADMIN)
 
 ---
 
 ## Multi-Tenant Architecture
 
-This system uses shared-database multi-tenant architecture.
+Shared-database multi-tenant model. Each tenant (bureau) has isolated data access, custom subscription, pricing, branding, and branch management.
 
-Each tenant (bureau service) has:
+JWT payload contains: `user_id`, `tenant_id`, `branch_id`, `role`.
 
-* isolated data access
-* custom subscription
-* custom pricing
-* custom branding
-* branch management
-* transaction ownership
+**Subscription Enforcement:**
 
-All API requests are tenant-aware.
-
-JWT payload contains:
-
-* user_id
-* tenant_id
-* branch_id
-* role
+* Expired subscription → tenant login blocked (402 response)
+* Public tracking page always accessible
+* Super Admin can impersonate any tenant
 
 ---
 
-## Subscription Rules
+## Transaction Lifecycle
 
-If subscription expires:
-
-* tenant login is blocked
-* public tracking page remains accessible
-* super admin can still impersonate tenant
-
-Subscription monitoring available for:
-
-* active subscriptions
-* expired tenants
-* upcoming expirations
-* renewal history
-
----
-
-## Tenant Branding
-
-Each tenant can:
-
-* upload logo
-* customize WhatsApp templates
-* customize invoice branding
-* customize public tracking branding
-
----
-
-## Transaction Workflow
-
-Transaction statuses:
-
-* DRAFT
-* ON_PROCESS
-* READY_TO_PICKUP
-* COMPLETED
-* CLOSED
-
-Dashboard must support full transaction lifecycle monitoring.
-
----
-
-## Public Tracking System
-
-Customers can access tracking page without login.
-
-Tracking page includes:
-
-* transaction status
-* timeline
-* invoice information
-* payment status
-* estimated completion
-* tenant branding
-
-Tracking page remains active even if subscription expires.
-
----
-
-## Notification Queue Monitoring
-
-Admin dashboard supports:
-
-* WhatsApp queue monitoring
-* failed notification retry
-* notification logs
-* message status tracking
-
----
-
-## Audit Logs
-
-Track:
-
-* transaction changes
-* pricing changes
-* subscription changes
-* impersonation activities
-* user activities
-
----
-
-## Revenue Aggregation
-
-Revenue available for:
-
-* branch level
-* tenant level
-* platform level
+```
+DRAFT → ON_PROCESS → READY_TO_PICKUP → COMPLETED → CLOSED
+```
 
 ---
 
 ## Security
 
-Security features:
-
-* JWT authentication
-* protected routes
-* role-based access
-* tenant isolation
-* secure impersonation
-* refresh token flow
-* API interceptor handling
+* JWT authentication with silent 401 retry
+* Protected routes via `middleware.ts`
+* Role-based access (SUPER_ADMIN / OWNER / ADMIN)
+* Tenant isolation enforced server-side
+* Subscription expired → 402 response → full-screen modal + auto logout
 
 ---
 
-## Quick Start
+## Dashboard Features
+
+### Super Admin (`/admin/*`)
+| Feature | Description |
+|:--------|:-----------|
+| Tenant Management | Create, edit, activate, suspend tenants |
+| Subscriptions | View, renew, monitor expiry |
+| Analytics | Platform-wide revenue, branch performance |
+| Promotions | Create discount rules per tenant |
+| Notification Monitor | WhatsApp queue, retry failed |
+| Tracking Monitor | Public tracking analytics |
+| Audit Logs | Activity and transaction audit trail |
+
+### Tenant Admin (`/dashboard/*`)
+| Feature | Description |
+|:--------|:-----------|
+| Dashboard | KPIs, revenue summary, active transactions |
+| Transactions | Full transaction lifecycle management |
+| Customers | Customer and vehicle management |
+| Revenue | Branch and service revenue analytics |
+| Settings | Branding, WhatsApp, pricing setup |
+| Subscription | View plan and renewal info |
+
+---
 
 ```bash
 npm install
-cp .env.example .env
+cp .env.example .env.local
 npm run dev
 ```
 
-Dashboard:
-
-```bash
-http://localhost:3001
-```
+Open: `http://localhost:3001`
 
 ---
 
@@ -198,6 +101,19 @@ http://localhost:3001
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1
 NEXT_PUBLIC_APP_NAME=STNK Bureau Admin
+```
+
+---
+
+## Available Scripts
+
+```bash
+npm run dev        # Start dev server (port 3001)
+npm run build      # Production build
+npm start          # Start production server
+npm run lint       # ESLint check
+npm run typecheck  # TypeScript type check
+```
 ```
 
 ---
@@ -214,95 +130,50 @@ npm run typecheck
 
 ---
 
-# Main Dashboard Features
-
-## Dashboard
-
-* System-wide statistics
-* Revenue summary
-* Active transactions
-* Subscription monitoring
-* Recent activities
-* Queue status
-
-## Tenant Management
-
-* Tenant list
-* Create tenant
-* Edit tenant
-* Activate/Suspend tenant
-* Manage subscription
-* View tenant branches
-* View tenant staff
-* Tenant impersonation
-
-## Transactions
-
-* View all transactions
-* Filter by bureau/status/date
-* View transaction detail
-* Export transactions
-* View audit logs
-
-## Analytics
-
-* Revenue analytics
-* Branch performance
-* Service popularity
-* Subscription analytics
-* Customer statistics
-
-## Promotions
-
-* Create promotions
-* Percentage discount
-* Fixed discount
-* Expiry rules
-* Tenant-targeted promotions
-
-## Notification Monitoring
-
-* Pending queue
-* Failed queue
-* Retry actions
-* Delivery logs
-
-## Tracking Monitoring
-
-* Tracking page access
-* Tracking analytics
-* Active public tracking links
-
-## Audit Monitoring
-
-* Transaction audit trail
-* User activity logs
-* System logs
-
----
-
-# 2. FRONTEND FOLDER STRUCTURE
+## Folder Structure
 
 ```text
 src/
 ├── app/
 │   ├── (auth)/
-│   ├── (dashboard)/
-│   ├── layout.tsx
-│   ├── page.tsx
-│   └── providers.tsx
+│   │   ├── login/page.tsx
+│   │   └── forgot-password/page.tsx
+│   ├── (public)/
+│   │   └── tracking/[trackingCode]/page.tsx
+│   ├── (dashboard)/                    # Tenant admin routes
+│   │   ├── layout.tsx                  # Dashboard layout + auth guard
+│   │   ├── dashboard/page.tsx
+│   │   ├── transactions/page.tsx
+│   │   ├── transactions/[id]/page.tsx
+│   │   ├── customers/page.tsx
+│   │   ├── vehicles/page.tsx
+│   │   ├── branches/page.tsx
+│   │   ├── revenue/page.tsx
+│   │   ├── settings/page.tsx
+│   │   └── subscription/page.tsx
+│   ├── (admin)/                        # Super admin routes
+│   │   ├── layout.tsx                  # Admin layout + SUPER_ADMIN guard
+│   │   ├── page.tsx                    # Admin landing
+│   │   ├── tenants/page.tsx
+│   │   ├── tenants/[id]/page.tsx
+│   │   ├── subscriptions/page.tsx
+│   │   ├── analytics/page.tsx
+│   │   ├── promotions/page.tsx
+│   │   ├── notifications/page.tsx
+│   │   ├── tracking/page.tsx
+│   │   ├── audit/page.tsx
+│   │   └── monitoring/page.tsx
+│   ├── layout.tsx                      # Root layout
+│   ├── page.tsx                        # Redirect to /login
+│   └── providers.tsx                   # TanStack Query + Auth provider
 │
-├── modules/
+├── modules/                            # Feature-based modules
 │   ├── auth/
-│   │   ├── api/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── pages/
-│   │   ├── schemas/
-│   │   ├── store/
-│   │   ├── types/
-│   │   └── utils/
-│   │
+│   │   ├── components/LoginForm.tsx
+│   │   ├── hooks/useAuth.ts
+│   │   ├── services/auth.service.ts
+│   │   ├── schemas/login.schema.ts
+│   │   └── types/index.ts
 │   ├── dashboard/
 │   ├── tenants/
 │   ├── subscriptions/
@@ -320,545 +191,126 @@ src/
 │
 ├── shared/
 │   ├── components/
-│   │   ├── layout/
-│   │   ├── forms/
-│   │   ├── tables/
-│   │   ├── modals/
-│   │   ├── cards/
-│   │   └── charts/
-│   │
-│   ├── ui/
-│   ├── hooks/
+│   │   ├── layout/          # Sidebar, Navbar, PageWrapper
+│   │   ├── forms/           # FormField, Select, DatePicker
+│   │   ├── tables/          # DataTable, Pagination
+│   │   ├── modals/          # Modal, ConfirmDialog
+│   │   ├── cards/           # KpiCard, StatCard
+│   │   └── charts/          # RevenueChart, BarChart
+│   ├── hooks/               # useDebounce, usePagination
 │   ├── services/
-│   ├── store/
-│   ├── utils/
-│   ├── validators/
-│   ├── constants/
-│   └── types/
+│   │   └── api.ts           # Centralized Axios instance + interceptors
+│   ├── store/               # Shared Zustand stores
+│   ├── utils/               # format.ts, date.ts
+│   ├── validators/          # Common Zod schemas
+│   ├── constants/           # API endpoints, status maps
+│   └── types/               # Shared TypeScript interfaces
 │
-├── styles/
-├── assets/
-└── middleware.ts
-```
-
----
-
-# Folder Principles
-
-## modules/
-
-Feature-based isolation.
-
-Each module owns:
-
-* API
-* components
-* hooks
-* pages
-* schemas
-* types
-* logic
-
-Avoid cross-module coupling.
-
----
-
-## shared/
-
-Global reusable resources.
-
-Contains:
-
-* UI components
-* tables
-* modal system
-* API utilities
-* interceptors
-* validators
-* constants
-
----
-
-## app/
-
-Next.js App Router layer.
-
-Contains:
-
-* route grouping
-* layouts
-* providers
-* middleware integration
-
----
-
-# 3. FRONTEND ROUTING STRUCTURE
-
-# Public Routes
-
-```text
-/login
-/forgot-password
-/tracking/[trackingCode]
-```
-
----
-
-# Protected Dashboard Routes
-
-```text
-/dashboard
-/dashboard/transactions
-/dashboard/transactions/[id]
-/dashboard/customers
-/dashboard/vehicles
-/dashboard/branches
-/dashboard/revenue
-/dashboard/settings
-/dashboard/subscription
-```
-
----
-
-# Super Admin Routes
-
-```text
-/admin
-/admin/tenants
-/admin/tenants/[id]
-/admin/subscriptions
-/admin/analytics
-/admin/promotions
-/admin/notifications
-/admin/tracking
-/admin/audit
-/admin/system-monitoring
-```
-
----
-
-# Route Grouping Structure
-
-```text
-app/
-├── (auth)/
-│   ├── login/
-│   └── forgot-password/
+├── store/
+│   ├── authStore.ts         # Auth state (user, token, refresh)
+│   └── uiStore.ts           # UI state (toast, loading)
 │
-├── (public)/
-│   └── tracking/
-│       └── [trackingCode]/
-│
-├── (dashboard)/
-│   ├── dashboard/
-│   ├── transactions/
-│   ├── customers/
-│   ├── vehicles/
-│   ├── revenue/
-│   ├── branches/
-│   ├── settings/
-│   └── subscription/
-│
-└── (admin)/
-    ├── tenants/
-    ├── analytics/
-    ├── subscriptions/
-    ├── promotions/
-    ├── notifications/
-    ├── audit/
-    └── monitoring/
+├── styles/                  # Global styles
+├── assets/                  # Static assets
+└── middleware.ts            # Next.js route protection
 ```
 
 ---
 
-# Routing Rules
+### Module Internal Structure
 
-## Public Routes
-
-No authentication required.
-
-Examples:
-
-* tracking page
-* login page
-
----
-
-## Protected Routes
-
-Require:
-
-* valid JWT
-* active subscription
-* tenant access
-
----
-
-## Super Admin Routes
-
-Require:
-
-* SUPER_ADMIN role
-
-Features:
-
-* impersonation
-* tenant management
-* platform analytics
-* queue monitoring
-
----
-
-# 4. API CONTRACT STANDARD
-
-# API Base URL
+Each module under `modules/` follows this pattern:
 
 ```text
-/api/v1
+modules/[feature]/
+├── components/     # Feature-specific UI components
+├── hooks/          # TanStack Query hooks (useQuery/useMutation)
+├── services/       # API service functions
+├── schemas/        # Zod validation schemas
+└── types/          # Feature TypeScript interfaces
 ```
 
 ---
 
-# Response Standard
+## API Reference
 
-## Success Response
+Base URL: `/api/v1`
+
+### Response Envelope
 
 ```json
-{
-  "success": true,
-  "message": "Transaction created successfully",
-  "data": {},
-  "meta": {}
-}
+{ "success": true, "message": "...", "data": {}, "meta": {} }
+{ "success": false, "message": "...", "errors": [] }
 ```
 
----
-
-## Error Response
-
-```json
-{
-  "success": false,
-  "message": "Validation error",
-  "errors": []
-}
-```
-
----
-
-# Authentication API
-
-## Login
+### Key Endpoints
 
 ```http
 POST /auth/login
-```
-
-Request:
-
-```json
-{
-  "phone": "08123456789",
-  "password": "password"
-}
-```
-
-Response:
-
-```json
-{
-  "access_token": "jwt",
-  "refresh_token": "jwt",
-  "user": {}
-}
-```
-
----
-
-## Refresh Token
-
-```http
 POST /auth/refresh
-```
-
----
-
-## Logout
-
-```http
 POST /auth/logout
-```
 
----
+GET  /admin/tenants
+POST /admin/tenants
+GET  /admin/tenants/:id
+PATCH /admin/tenants/:id/status
 
-# Tenant APIs
-
-```http
-GET /tenants
-POST /tenants
-GET /tenants/:id
-PUT /tenants/:id
-PATCH /tenants/:id/status
-```
-
----
-
-# Subscription APIs
-
-```http
-GET /subscriptions
-POST /subscriptions
-PATCH /subscriptions/:id
-```
-
----
-
-# Transaction APIs
-
-## List Transactions
-
-```http
-GET /transactions
-```
-
-Query:
-
-```text
-?page=1
-&limit=20
-&status=ON_PROCESS
-&branch_id=xxx
-&search=plate
-```
-
----
-
-## Create Transaction
-
-```http
+GET  /transactions
 POST /transactions
-```
-
-Payload:
-
-```json
-{
-  "customer": {},
-  "vehicles": [],
-  "services": [],
-  "estimated_total": 0,
-  "dp_amount": 0,
-  "estimated_finish_date": "2026-05-12"
-}
-```
-
----
-
-## Update Status
-
-```http
+GET  /transactions/:id
 PATCH /transactions/:id/status
-```
 
----
-
-## Transaction Detail
-
-```http
-GET /transactions/:id
-```
-
----
-
-# Customer APIs
-
-```http
-GET /customers
+GET  /customers
 POST /customers
-GET /customers/:id
-PUT /customers/:id
-```
+GET  /analytics/revenue
+GET  /analytics/branches
 
----
-
-# Vehicle APIs
-
-```http
-GET /vehicles
-POST /vehicles
-```
-
----
-
-# Revenue APIs
-
-```http
-GET /analytics/revenue
-GET /analytics/profit
-GET /analytics/branches
-```
-
----
-
-# Notification APIs
-
-```http
-GET /notifications/queue
+GET  /notifications/queue
 POST /notifications/retry/:id
+GET  /tracking/:trackingCode      # Public - no auth required
+GET  /audit-logs
 ```
 
----
+All protected endpoints require: `Authorization: Bearer <token>`
 
-# Tracking APIs
-
-## Public Tracking
-
-```http
-GET /tracking/:trackingCode
-```
-
-No authentication required.
+Token refresh is handled automatically by the Axios interceptor on `401` responses.
 
 ---
 
-# Audit APIs
+## State Management
 
-```http
-GET /audit-logs
-```
+| State Type | Tool | Examples |
+|:-----------|:-----|:---------|
+| Server data | TanStack Query | Transactions, Tenants, KPIs |
+| Auth session | Zustand `authStore` | User, Token, Role |
+| UI state | Zustand `uiStore` | Toast, Loading |
+| Form state | React Hook Form | Input values, validation |
+| URL params | Router | Filters, Pagination, Search |
 
----
-
-# Promotion APIs
-
-```http
-GET /promotions
-POST /promotions
-PATCH /promotions/:id
-```
-
----
-
-# API Security Rules
-
-## JWT Interceptor
-
-Automatically inject:
-
-```http
-Authorization: Bearer TOKEN
-```
-
----
-
-## Tenant Isolation
-
-Backend MUST validate:
-
-* tenant_id from JWT
-* branch ownership
-* role access
-
-Frontend MUST NEVER send tenant_id manually.
-
----
-
-## Token Refresh
-
-Automatic refresh flow:
-
-```text
-401 response
-↓
-refresh token request
-↓
-retry original request
-```
-
----
-
-# Query Standards
-
-## Pagination
-
-```json
-{
-  "meta": {
-    "page": 1,
-    "limit": 20,
-    "total": 100
-  }
-}
-```
-
----
-
-## Filtering
-
-Supported:
-
-* status
-* branch
-* date range
-* search
-
----
-
-## Sorting
-
-```text
-?sort=created_at:desc
-```
-
----
-
-# Frontend Service Layer Standard
-
-Example:
+### Query Key Standards
 
 ```typescript
-transactionService.getAll()
-transactionService.getById()
-transactionService.create()
-transactionService.updateStatus()
-```
-
----
-
-# Zustand Store Structure
-
-```text
-store/
-├── auth.store.ts
-├── ui.store.ts
-├── filter.store.ts
-└── session.store.ts
-```
-
----
-
-# Query Key Standards
-
-```typescript
+['admin-dashboard']
+['tenants']
+['tenants', id]
 ['transactions']
 ['transactions', id]
-['tenants']
 ['subscriptions']
 ```
 
 ---
 
-# Final Architecture Principles
+## Data Flow
 
-This frontend architecture prioritizes:
+```
+UI Component
+    ↓
+Custom Hook  (useQuery / useMutation)
+    ↓
+Service Layer  (modules/[feature]/services/*.service.ts)
+    ↓
+Axios Instance  (shared/services/api.ts — interceptors, auth, error handling)
+    ↓
+Backend REST API  (/api/v1/*)
+```
 
-* operational speed
-* scalability
-* modularity
-* tenant isolation
-* maintainability
-* enterprise SaaS standards
-* simple operational UX
-* low learning curve
-
-The system is optimized for Indonesian bureau operational workflows and designed for future scaling.

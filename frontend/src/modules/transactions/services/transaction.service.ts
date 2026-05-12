@@ -1,9 +1,9 @@
-import client from '../../../api/client';
+import api from '../../../shared/services/api';
 import { Transaction } from '../../../shared/types';
 
 export const transactionService = {
   list: async (): Promise<Transaction[]> => {
-    const { data } = await client.get('/transactions');
+    const { data } = await api.get('/transactions');
     return data;
   },
 };
