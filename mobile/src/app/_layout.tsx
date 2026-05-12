@@ -1,20 +1,24 @@
-import { Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
-import { useEffect } from 'react';
+import { Redirect, Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function RootLayout() {
   const user = useAuthStore((state) => state.user);
 
   if (!user) {
-    return <LoginScreenNavigation />;
+    return (
+      <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+      </Stack>
+    );
   }
 
   return (
     <Tabs
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
-          const icons: { [key: string]: string } = {
+          const icons: { [key: string]: any } = {
             home: 'home',
             transaction: 'plus-circle',
             history: 'history',
@@ -24,56 +28,15 @@ export default function RootLayout() {
         },
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: '#999',
-        headerStyle: {
-          backgroundColor: '#f8f9fa',
-        },
+        headerStyle: { backgroundColor: '#f8f9fa' },
         headerTintColor: '#000',
-        headerTitleStyle: {
-          fontWeight: '600',
-        },
+        headerTitleStyle: { fontWeight: '600' },
       })}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Home',
-          headerShown: true,
-        }}
-      />
-      <Tabs.Screen
-        name="transaction"
-        options={{
-          title: 'Transaksi Baru',
-          headerShown: true,
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'Riwayat',
-          headerShown: true,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Pengaturan',
-          headerShown: true,
-        }}
-      />
-    </Tabs>
-  );
-}
-
-function LoginScreenNavigation() {
-  return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarVisible: false,
-      }}
-    >
-      <Tabs.Screen name="login" options={{ href: null }} />
+      <Tabs.Screen name="home" options={{ title: 'Home', headerShown: true }} />
+      <Tabs.Screen name="transaction" options={{ title: 'Transaksi Baru', headerShown: true }} />
+      <Tabs.Screen name="history" options={{ title: 'Riwayat', headerShown: true }} />
+      <Tabs.Screen name="settings" options={{ title: 'Pengaturan', headerShown: true }} />
     </Tabs>
   );
 }

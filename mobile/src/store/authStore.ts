@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User } from '../types';
+import { User } from '../shared/types';
 
 interface AuthStore {
   user: User | null;
@@ -9,6 +9,7 @@ interface AuthStore {
   error: string | null;
 
   setUser: (user: User | null) => void;
+  setToken: (token: string) => void;
   setTokens: (token: string, refreshToken: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -23,8 +24,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
   error: null,
 
   setUser: (user) => set({ user }),
+  setToken: (token) => set({ token }),
   setTokens: (token, refreshToken) => {
-    // Save to some persistent storage if needed here
     set({ token, refreshToken });
   },
   setLoading: (loading) => set({ isLoading: loading }),

@@ -1,15 +1,13 @@
 import { View, Text, TextInput, StyleSheet, Pressable, Alert } from 'react-native';
 import { useState } from 'react';
-import { authAPI } from '../api/auth';
-import { useAuthStore } from '../store/authStore';
 import { useRouter } from 'expo-router';
+import { useLogin } from '../modules/auth/hooks/useAuth';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('owner-biro-jasa-stnk-jakarta-pusat@stnkbureau.local');
   const [password, setPassword] = useState('password123456');
-  const [isLoading, setIsLoading] = useState(false);
-  const user = useAuthStore((state) => state.user);
+  const loginMutation = useLogin();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -17,15 +15,15 @@ export default function LoginScreen() {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await authAPI.login(email, password);
-      router.replace('/home');
-    } catch (error: any) {
-      Alert.alert('Login Gagal', error.response?.data?.error || 'Terjadi kesalahan');
-    } finally {
-      setIsLoading(false);
-    }
+    loginMutation.mutate(
+      { email, password },
+      {
+        onSuccess: () => router.replace('/home'),
+        onError: (error: any) => {
+          Alert.alert('Login Gagal', error.response?.data?.error || 'Terjadi kesalahan');
+        },
+      }
+    );
   };
 
   return (
@@ -40,7 +38,7 @@ export default function LoginScreen() {
           placeholder="Masukkan email"
           value={email}
           onChangeText={setEmail}
-          editable={!isLoading}
+          editable={!loginMutation.isPending}
           keyboardType="email-address"
         />
 
@@ -51,15 +49,15 @@ export default function LoginScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          editable={!isLoading}
+          editable={!loginMutation.isPending}
         />
 
         <Pressable
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+          style={[styles.button, loginMutation.isPending && styles.buttonDisabled]}
           onPress={handleLogin}
-          disabled={isLoading}
+          disabled={loginMutation.isPending}
         >
-          <Text style={styles.buttonText}>{isLoading ? 'Loading...' : 'Login'}</Text>
+          <Text style={styles.buttonText}>{loginMutation.isPending ? 'Loading...' : 'Login'}</Text>
         </Pressable>
 
         <Text style={styles.note}>
@@ -140,4 +138,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

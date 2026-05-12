@@ -2,7 +2,6 @@ import { View, Text, StyleSheet, Pressable, ScrollView, Alert } from 'react-nati
 import { useAuthStore } from '../store/authStore';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { authAPI } from '../api/auth';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -18,8 +17,7 @@ export default function SettingsScreen() {
       },
       {
         text: 'Logout',
-        onPress: async () => {
-          await authAPI.logout();
+        onPress: () => {
           logout();
           router.replace('/');
         },
@@ -34,7 +32,7 @@ export default function SettingsScreen() {
         <View style={styles.avatarContainer}>
           <MaterialCommunityIcons name="account" size={48} color="#007AFF" />
         </View>
-        <Text style={styles.nameText}>{user?.full_name || 'User'}</Text>
+        <Text style={styles.nameText}>{user?.name || 'User'}</Text>
         <Text style={styles.emailText}>{user?.email}</Text>
       </View>
 
@@ -58,7 +56,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.infoRow}>
-          <MaterialCommunityIcons name="account-badge" size={20} color="#999" />
+          <MaterialCommunityIcons name="badge-account" size={20} color="#999" />
           <View style={styles.infoContent}>
             <Text style={styles.infoLabel}>Role</Text>
             <Text style={styles.infoValue}>{user?.role}</Text>

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Transaction, Service } from '../types';
+import { Transaction, Service } from '../shared/types';
 
 interface TransactionStore {
   transactions: Transaction[];

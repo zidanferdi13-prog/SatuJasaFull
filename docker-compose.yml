@@ -75,7 +75,7 @@ services:
       NEXT_PUBLIC_APP_NAME: STNK Bureau Admin
       NODE_ENV: production
     ports:
-      - '3001:3001'
+      - '3001:3000'
     depends_on:
       - backend
     networks:
