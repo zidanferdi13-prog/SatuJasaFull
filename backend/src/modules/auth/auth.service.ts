@@ -1,91 +1,185 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Prisma } from '@prisma/client';
 import prisma from '../../config/prisma';
-import { UserPayload } from '../../shared/middleware/auth.middleware';
+import { LoginResult } from './auth.types';
+
+const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'access-secret';
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-secret';
+const ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
+const REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+
+const buildPayload = (user: any, tenant: any) => ({
+  user_id: user.id,
+  tenant_id: user.tenantId,
+  branch_id: user.branchId || '',
+  role: user.role,
+  tenant_code: tenant.code,
+});
+
+const signTokens = (payload: object) => ({
+  accessToken: jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_EXPIRES as any }),
+  refreshToken: jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES as any }),
+  expiresIn: ACCESS_EXPIRES,
+});
 
 export class AuthService {
-  private static JWT_SECRET = process.env.JWT_SECRET || 'jwt-secret-key';
-  private static JWT_EXPIRES_IN = '24h';
-
-  static async login(email: string, password: string) {
+  static async login(email: string, password: string): Promise<LoginResult> {
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { tenant: true }
+      include: { tenant: true },
     });
 
     if (!user || !user.isActive) {
-      throw new Error('Invalid credentials or inactive user');
+      throw Object.assign(new Error('Invalid credentials'), { statusCode: 401 });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      throw new Error('Invalid credentials');
+      throw Object.assign(new Error('Invalid credentials'), { statusCode: 401 });
     }
 
     if (user.role !== 'SUPER_ADMIN') {
       const now = new Date();
-      if (user.tenant.status !== 'ACTIVE' || user.tenant.subscriptionEnd < now) {
-        throw new Error('Tenant subscription expired or suspended');
+      if (
+        user.tenant.subscriptionStatus !== 'ACTIVE' ||
+        user.tenant.subscriptionEnd < now
+      ) {
+        throw Object.assign(
+          new Error('Tenant subscription expired or suspended'),
+          { statusCode: 402 }
+        );
       }
     }
 
-    const payload: UserPayload = {
-      id: user.id,
-      tid: user.tenantId,
-      bid: user.branchId || '',
-      role: user.role,
-      code: user.tenant.code
-    };
+    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
-    const token = jwt.sign(payload as object, this.JWT_SECRET, { expiresIn: this.JWT_EXPIRES_IN as any });
+    const payload = buildPayload(user, user.tenant);
+    const tokens = signTokens(payload);
 
     return {
-      token,
+      ...tokens,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
+        tenantId: user.tenantId,
         tenantCode: user.tenant.code,
-        tenantName: user.tenant.name
-      }
+        tenantName: user.tenant.name,
+        branchId: user.branchId,
+      },
     };
+  }
+
+  static async refresh(refreshToken: string): Promise<LoginResult> {
+    let decoded: any;
+    try {
+      decoded = jwt.verify(refreshToken, REFRESH_SECRET);
+    } catch {
+      throw Object.assign(new Error('Invalid refresh token'), { statusCode: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.user_id },
+      include: { tenant: true },
+    });
+
+    if (!user || !user.isActive) {
+      throw Object.assign(new Error('User not found or inactive'), { statusCode: 401 });
+    }
+
+    const payload = buildPayload(user, user.tenant);
+    const tokens = signTokens(payload);
+
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+        tenantCode: user.tenant.code,
+        tenantName: user.tenant.name,
+        branchId: user.branchId,
+      },
+    };
+  }
+
+  static async me(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        tenantId: true,
+        branchId: true,
+        isActive: true,
+        lastLoginAt: true,
+        tenant: { select: { id: true, code: true, name: true, logoUrl: true, subscriptionStatus: true } },
+        branch: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!user) throw Object.assign(new Error('User not found'), { statusCode: 404 });
+    return user;
   }
 
   static async registerTenant(data: {
     name: string;
     code: string;
+    phone?: string;
+    address?: string;
+    ownerName: string;
     ownerEmail: string;
-    ownerPass: string;
-    subMonths: number;
+    ownerPassword: string;
+    subscriptionMonths: number;
+    planName: string;
+    planPrice: number;
   }) {
-    const hash = await bcrypt.hash(data.ownerPass, 12);
+    const hash = await bcrypt.hash(data.ownerPassword, 12);
+    const subStart = new Date();
     const subEnd = new Date();
-    subEnd.setMonth(subEnd.getMonth() + data.subMonths);
+    subEnd.setMonth(subEnd.getMonth() + data.subscriptionMonths);
 
-    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    return prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
           name: data.name,
           code: data.code.toUpperCase(),
-          subscriptionStart: new Date(),
+          phone: data.phone,
+          address: data.address,
+          subscriptionStart: subStart,
           subscriptionEnd: subEnd,
-          status: 'ACTIVE'
-        }
+          subscriptionStatus: 'ACTIVE',
+        },
       });
 
-      const user = await tx.user.create({
+      const owner = await tx.user.create({
         data: {
-          name: 'Owner',
+          name: data.ownerName,
           email: data.ownerEmail,
           passwordHash: hash,
           role: 'OWNER',
-          tenantId: tenant.id
-        }
+          tenantId: tenant.id,
+        },
       });
 
-      return { tenant, user };
+      await tx.subscription.create({
+        data: {
+          tenantId: tenant.id,
+          planName: data.planName,
+          startDate: subStart,
+          endDate: subEnd,
+          price: data.planPrice,
+          status: 'ACTIVE',
+        },
+      });
+
+      return { tenant, owner: { id: owner.id, name: owner.name, email: owner.email } };
     });
   }
 }
+

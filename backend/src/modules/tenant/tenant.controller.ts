@@ -1,24 +1,57 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { TenantService } from './tenant.service';
+import { sendSuccess, sendPaginated } from '../../shared/utils/response';
 
 export class TenantController {
-  static async list(req: Request, res: Response) {
+  static async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const tenants = await TenantService.listAll();
-      return res.json(tenants);
-    } catch (error: any) {
-      return res.status(500).json({ error: error.message });
-    }
+      const { tenants, total, page, limit } = await TenantService.listAll(req.query);
+      return sendPaginated(res, tenants, total, page, limit);
+    } catch (err) { next(err); }
   }
 
-  static async update(req: Request, res: Response) {
+  static async getOne(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
-      const { subscriptionEnd, status } = req.body;
-      const tenant = await TenantService.updateSubscription(id, subscriptionEnd, status);
-      return res.json(tenant);
-    } catch (error: any) {
-      return res.status(400).json({ error: error.message });
-    }
+      const tenant = await TenantService.findById(req.params.id);
+      return sendSuccess(res, tenant);
+    } catch (err) { next(err); }
+  }
+
+  static async create(req: Request, res: Response, next: NextFunction) {
+    try {
+      // Delegates to auth service's registerTenant
+      const { AuthService } = await import('../auth/auth.service');
+      const result = await AuthService.registerTenant(req.body);
+      return sendSuccess(res, result, 'Tenant created', 201);
+    } catch (err) { next(err); }
+  }
+
+  static async update(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tenant = await TenantService.update(req.params.id, req.body);
+      return sendSuccess(res, tenant);
+    } catch (err) { next(err); }
+  }
+
+  static async updateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tenant = await TenantService.updateStatus(req.params.id, req.body);
+      return sendSuccess(res, tenant);
+    } catch (err) { next(err); }
+  }
+
+  static async impersonate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TenantService.impersonate(req.params.id, req.user!.user_id);
+      return sendSuccess(res, result);
+    } catch (err) { next(err); }
+  }
+
+  static async uploadLogo(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+      const tenant = await TenantService.uploadLogo(req.params.id, req.file.path);
+      return sendSuccess(res, { logoUrl: tenant.logoUrl });
+    } catch (err) { next(err); }
   }
 }

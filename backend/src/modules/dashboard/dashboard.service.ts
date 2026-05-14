@@ -2,47 +2,83 @@ import prisma from '../../config/prisma';
 
 export class DashboardService {
   static async getTenantKpis(tenantId: string, branchId?: string) {
-    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const filter = {
-      tenantId,
-      branchId: branchId || undefined
-    };
+    const filter: any = { tenantId };
+    if (branchId) filter.branchId = branchId;
 
-    const [revenueToday, activeTrx, readyPickup, totalMonth] = await Promise.all([
-      prisma.transaction.aggregate({
-        where: { ...filter, status: 'CLOSED', updatedAt: { gte: startOfDay } },
-        _sum: { finalTotal: true }
-      }),
-      prisma.transaction.count({
-        where: { ...filter, status: { in: ['ON_PROCESS', 'READY_TO_PICKUP'] } }
-      }),
-      prisma.transaction.count({
-        where: { ...filter, status: 'READY_TO_PICKUP' }
-      }),
-      prisma.transaction.aggregate({
-        where: { ...filter, status: 'CLOSED', updatedAt: { gte: startOfMonth } },
-        _sum: { finalTotal: true }
-      })
-    ]);
+    const [revenueToday, monthlyRevenue, totalRefund, activeTrx, readyPickup, closedToday, overdue] =
+      await Promise.all([
+        prisma.transaction.aggregate({
+          where: { ...filter, status: 'CLOSED', updatedAt: { gte: today } },
+          _sum: { finalTotal: true },
+        }),
+        prisma.transaction.aggregate({
+          where: { ...filter, status: 'CLOSED', updatedAt: { gte: monthStart } },
+          _sum: { finalTotal: true },
+        }),
+        prisma.transaction.aggregate({
+          where: { ...filter, refundAmount: { gt: 0 } },
+          _sum: { refundAmount: true },
+        }),
+        prisma.transaction.count({
+          where: { ...filter, status: { in: ['ON_PROCESS', 'READY_TO_PICKUP', 'COMPLETED'] } },
+        }),
+        prisma.transaction.count({ where: { ...filter, status: 'READY_TO_PICKUP' } }),
+        prisma.transaction.count({ where: { ...filter, status: 'CLOSED', updatedAt: { gte: today } } }),
+        prisma.transaction.count({
+          where: {
+            ...filter,
+            status: { in: ['ON_PROCESS', 'READY_TO_PICKUP'] },
+            estimatedFinishDate: { lt: new Date() },
+          },
+        }),
+      ]);
 
     return {
       revenueToday: Number(revenueToday._sum.finalTotal || 0),
+      monthlyRevenue: Number(monthlyRevenue._sum.finalTotal || 0),
+      totalRefund: Number(totalRefund._sum.refundAmount || 0),
       activeTransactions: activeTrx,
       readyPickupCount: readyPickup,
-      monthlyRevenue: Number(totalMonth._sum.finalTotal || 0)
+      closedToday,
+      overdueTransactions: overdue,
     };
   }
 
-  static async getAdminKpis() {
-    const [totalTenants, activeTenants, totalTransactions, expired] = await Promise.all([
-      prisma.tenant.count(),
-      prisma.tenant.count({ where: { status: 'ACTIVE' } }),
-      prisma.transaction.count(),
-      prisma.tenant.count({ where: { subscriptionEnd: { lt: new Date() } } })
-    ]);
+  static async getBranchKpis(tenantId: string, branchId: string) {
+    return this.getTenantKpis(tenantId, branchId);
+  }
 
-    return { totalTenants, activeTenants, totalTransactions, expiredSubscriptions: expired };
+  static async getAdminKpis() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalTenants, activeTenants, expiredSubscriptions, totalTransactions, monthRevenue, queuePending] =
+      await Promise.all([
+        prisma.tenant.count(),
+        prisma.tenant.count({ where: { subscriptionStatus: 'ACTIVE' } }),
+        prisma.tenant.count({
+          where: { OR: [{ subscriptionStatus: 'EXPIRED' }, { subscriptionEnd: { lt: now } }] },
+        }),
+        prisma.transaction.count(),
+        prisma.transaction.aggregate({
+          where: { status: 'CLOSED', updatedAt: { gte: monthStart } },
+          _sum: { finalTotal: true },
+        }),
+        prisma.whatsappQueue.count({ where: { status: 'PENDING' } }),
+      ]);
+
+    return {
+      totalTenants,
+      activeTenants,
+      expiredSubscriptions,
+      totalTransactions,
+      platformMonthlyRevenue: Number(monthRevenue._sum.finalTotal || 0),
+      whatsappQueuePending: queuePending,
+    };
   }
 }
+

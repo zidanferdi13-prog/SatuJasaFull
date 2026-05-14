@@ -19,10 +19,35 @@ export interface AnalyticsFilters {
   tenantId?: string;
 }
 
-export const analyticsService = {
-  getRevenue: (filters?: AnalyticsFilters): Promise<RevenueData[]> =>
-    api.get('/analytics/revenue', { params: filters }).then((r) => r.data.data),
+export interface RevenueExportSummary {
+  totalRevenue: number;
+  totalDp: number;
+  totalRefund: number;
+  transactionCount: number;
+}
 
-  getBranchRevenue: (filters?: AnalyticsFilters): Promise<BranchRevenue[]> =>
-    api.get('/analytics/branches', { params: filters }).then((r) => r.data.data),
+export const analyticsService = {
+  // Revenue summary — GET /exports/revenue
+  getRevenueSummary: (filters?: AnalyticsFilters): Promise<RevenueExportSummary> =>
+    api
+      .get('/exports/revenue', {
+        params: {
+          start_date: filters?.startDate,
+          end_date: filters?.endDate,
+          tenant_id: filters?.tenantId,
+        },
+      })
+      .then((r) => r.data.data),
+
+  // Admin KPI snapshot — GET /dashboard/admin
+  getAdminSnapshot: () =>
+    api.get('/dashboard/admin').then((r) => r.data.data),
+
+  // Tenant KPI snapshot — GET /dashboard/tenant
+  getTenantSnapshot: () =>
+    api.get('/dashboard/tenant').then((r) => r.data.data),
+
+  // Branch KPI — GET /dashboard/branch/:branchId
+  getBranchKpis: (branchId: string) =>
+    api.get(`/dashboard/branch/${branchId}`).then((r) => r.data.data),
 };

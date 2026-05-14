@@ -44,14 +44,18 @@ services:
     environment:
       DATABASE_URL: postgresql://stnk_user:stnk_password_dev@postgres:5432/stnk_bureau
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: your_jwt_secret_key_change_in_production
-      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
-      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
-      TWILIO_WHATSAPP_NUMBER: ${TWILIO_WHATSAPP_NUMBER:-}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
       NODE_ENV: production
       PORT: 3000
       APP_URL: http://backend:3000
-      TRACKING_BASE_URL: http://localhost:3000
+      TRACKING_URL: http://localhost:3001/tracking
+      FRONTEND_URL: http://localhost:3001
+      ALLOWED_ORIGINS: http://localhost:3001
+      INVOICE_STORAGE_PATH: /app/backend/storage/invoices
+      TENANT_LOGO_STORAGE_PATH: /app/backend/uploads/tenant-logos
     ports:
       - '3000:3000'
     depends_on:

@@ -21,7 +21,7 @@ export default function AdminTransactionsPage() {
         subtitle="Monitor all platform transactions"
       />
 
-      {!transactions || transactions.length === 0 ? (
+      {!transactions || transactions.data.length === 0 ? (
         <EmptyState message="Belum ada transaksi" />
       ) : (
         <DataTable
@@ -61,7 +61,7 @@ export default function AdminTransactionsPage() {
               render: (t: Transaction) => formatDateTime(t.createdAt),
             },
           ]}
-          data={transactions}
+          data={transactions.data}
           keyExtractor={(t: Transaction) => t.id}
         />
       )}

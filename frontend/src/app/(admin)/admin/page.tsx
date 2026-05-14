@@ -83,10 +83,10 @@ export default function AdminDashboardPage() {
             {
               key: 'status',
               header: 'Status',
-              render: (t: Tenant) => <StatusBadge status={t.status} type="tenant" />,
+              render: (t: Tenant) => <StatusBadge status={t.subscriptionStatus} type="tenant" />,
             },
           ]}
-          data={tenants?.slice(0, 10) ?? []}
+          data={tenants?.data?.slice(0, 10) ?? []}
           keyExtractor={(t: Tenant) => t.id}
           loading={tenantsLoading}
         />

@@ -34,19 +34,20 @@ export default function TenantsPage() {
   const [form, setForm] = useState({
     code: '',
     name: '',
+    ownerName: '',
     ownerEmail: '',
     ownerPassword: '',
-    subscriptionEnd: '',
+    subscriptionMonths: 12,
   });
 
   const handleCreate = () => {
-    if (!form.code || !form.name || !form.ownerEmail || !form.ownerPassword || !form.subscriptionEnd)
+    if (!form.code || !form.name || !form.ownerName || !form.ownerEmail || !form.ownerPassword)
       return;
 
     createMutation.mutate(form, {
       onSuccess: () => {
         setShowModal(false);
-        setForm({ code: '', name: '', ownerEmail: '', ownerPassword: '', subscriptionEnd: '' });
+        setForm({ code: '', name: '', ownerName: '', ownerEmail: '', ownerPassword: '', subscriptionMonths: 12 });
       },
     });
   };
@@ -77,7 +78,7 @@ export default function TenantsPage() {
         }
       />
 
-      {!tenants || tenants.length === 0 ? (
+      {!tenants || tenants.data.length === 0 ? (
         <EmptyState message="Belum ada tenant" description="Buat tenant baru untuk memulai" />
       ) : (
         <table style={{
@@ -98,7 +99,7 @@ export default function TenantsPage() {
             </tr>
           </thead>
           <tbody>
-            {tenants.map((tenant: Tenant) => (
+            {tenants.data.map((tenant: Tenant) => (
               <tr
                 key={tenant.id}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = '#f8f9fa'; }}
@@ -121,7 +122,7 @@ export default function TenantsPage() {
                   </span>
                 </td>
                 <td style={tdStyle}>
-                  <StatusBadge status={tenant.status} type="tenant" />
+                  <StatusBadge status={tenant.subscriptionStatus} type="tenant" />
                 </td>
                 <td style={tdStyle}>
                   <a
@@ -142,9 +143,9 @@ export default function TenantsPage() {
           {[
             { label: 'Kode Tenant', key: 'code', placeholder: 'birojasa1', type: 'text' },
             { label: 'Nama Tenant', key: 'name', placeholder: 'Biro Jasa STNK Jakarta Pusat', type: 'text' },
+            { label: 'Nama Owner', key: 'ownerName', placeholder: 'Budi Santoso', type: 'text' },
             { label: 'Email Owner', key: 'ownerEmail', placeholder: 'owner@example.com', type: 'email' },
             { label: 'Password Owner', key: 'ownerPassword', placeholder: 'Min. 8 karakter', type: 'password' },
-            { label: 'Subscription End', key: 'subscriptionEnd', placeholder: '', type: 'date' },
           ].map(({ label, key, placeholder, type }) => (
             <div key={key}>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 6 }}>

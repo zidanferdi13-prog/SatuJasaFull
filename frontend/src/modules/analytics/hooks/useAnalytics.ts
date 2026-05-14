@@ -1,18 +1,30 @@
 import { useQuery } from '@tanstack/react-query';
 import { analyticsService, AnalyticsFilters } from '../services/analytics.service';
 
-export function useRevenueAnalytics(filters?: AnalyticsFilters) {
+export function useRevenueSummary(filters?: AnalyticsFilters) {
   return useQuery({
-    queryKey: ['analytics-revenue', filters],
-    queryFn: () => analyticsService.getRevenue(filters),
+    queryKey: ['analytics-revenue-summary', filters],
+    queryFn: () => analyticsService.getRevenueSummary(filters),
     staleTime: 60_000,
   });
 }
 
-export function useBranchAnalytics(filters?: AnalyticsFilters) {
+export function useAdminSnapshot() {
   return useQuery({
-    queryKey: ['analytics-branches', filters],
-    queryFn: () => analyticsService.getBranchRevenue(filters),
-    staleTime: 60_000,
+    queryKey: ['admin-dashboard'],
+    queryFn: analyticsService.getAdminSnapshot,
+    staleTime: 30_000,
   });
 }
+
+export function useTenantSnapshot() {
+  return useQuery({
+    queryKey: ['tenant-dashboard'],
+    queryFn: analyticsService.getTenantSnapshot,
+    staleTime: 30_000,
+  });
+}
+
+// Legacy aliases for backward compatibility
+export const useRevenueAnalytics = useRevenueSummary;
+export const useBranchAnalytics = useTenantSnapshot;

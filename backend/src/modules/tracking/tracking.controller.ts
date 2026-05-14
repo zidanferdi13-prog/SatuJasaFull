@@ -1,15 +1,14 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { TrackingService } from './tracking.service';
+import { sendSuccess, sendError } from '../../shared/utils/response';
 
 export class TrackingController {
-  static async getStatus(req: Request, res: Response) {
+  static async getStatus(req: Request, res: Response, next: NextFunction) {
     try {
-      const { token } = req.params;
-      const data = await TrackingService.getByToken(token);
-      if (!data) return res.status(404).json({ error: 'Tracking not found' });
-      return res.json(data);
-    } catch (error: any) {
-      return res.status(500).json({ error: error.message });
-    }
+      const data = await TrackingService.getByTrackingCode(req.params.trackingCode);
+      if (!data) return sendError(res, 'Tracking code not found', 404);
+      return sendSuccess(res, data);
+    } catch (err) { next(err); }
   }
 }
+

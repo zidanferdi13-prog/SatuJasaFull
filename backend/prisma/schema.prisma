@@ -7,24 +7,70 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Tenant {
-  id                String   @id @default(uuid())
-  code              String   @unique
-  name              String
-  logoUrl           String?
-  subscriptionStart DateTime
-  subscriptionEnd   DateTime
-  status            String   @default("ACTIVE") // ACTIVE, SUSPENDED, EXPIRED
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+// ─── Enums ───────────────────────────────────────────────────────────────────
 
-  users             User[]
-  branches          Branch[]
-  customers         Customer[]
-  transactions      Transaction[]
-  services          Service[]
-  pricingRules      PricingRule[]
-  subscriptions     SubscriptionHistory[]
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  ADMIN
+}
+
+enum TransactionStatus {
+  DRAFT
+  ON_PROCESS
+  READY_TO_PICKUP
+  COMPLETED
+  CLOSED
+}
+
+enum PaymentType {
+  DP
+  FINAL_PAYMENT
+  REFUND
+}
+
+enum PaymentMethod {
+  CASH
+}
+
+enum WhatsappStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Tenant {
+  id                  String             @id @default(uuid())
+  code                String             @unique
+  name                String
+  logoUrl             String?
+  phone               String?
+  address             String?
+  subscriptionStart   DateTime
+  subscriptionEnd     DateTime
+  subscriptionStatus  SubscriptionStatus @default(ACTIVE)
+  isActive            Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  users            User[]
+  branches         Branch[]
+  customers        Customer[]
+  transactions     Transaction[]
+  serviceTypes     ServiceType[]
+  pricingRules     PricingRule[]
+  invoiceSequences InvoiceSequence[]
+  whatsappQueues   WhatsappQueue[]
+  auditLogs        AuditLog[]
+  subscriptions    Subscription[]
 
   @@map("tenants")
 }
@@ -39,28 +85,32 @@ model Branch {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
-  users       User[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  users        User[]
   transactions Transaction[]
 
+  @@index([tenantId])
   @@map("branches")
 }
 
 model User {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   tenantId     String
   branchId     String?
   name         String
-  email        String   @unique
+  email        String    @unique
   passwordHash String
-  role         String   // SUPER_ADMIN, OWNER, ADMIN
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         Role
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id])
-  branch  Branch? @relation(fields: [branchId], references: [id])
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  branch    Branch?    @relation(fields: [branchId], references: [id])
+  auditLogs AuditLog[]
 
+  @@index([tenantId])
   @@map("users")
 }
 
@@ -74,10 +124,12 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
   vehicles     Vehicle[]
   transactions Transaction[]
 
+  @@index([tenantId])
+  @@index([phone])
   @@map("customers")
 }
 
@@ -87,6 +139,7 @@ model Vehicle {
   plateNumber      String
   model            String?
   brand            String?
+  color            String?
   engineNumber     String?
   chassisNumber    String?
   registrationYear Int?
@@ -96,64 +149,76 @@ model Vehicle {
   customer         Customer          @relation(fields: [customerId], references: [id])
   transactionItems TransactionItem[]
 
+  @@index([plateNumber])
   @@map("vehicles")
 }
 
-model Service {
-  id        String   @id @default(uuid())
-  tenantId  String
-  name      String
-  basePrice Decimal  @db.Decimal(15, 2)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model ServiceType {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  // null tenantId = global service type managed by super admin
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
   transactionItems TransactionItem[]
   pricingRules     PricingRule[]
 
-  @@map("services")
+  @@map("service_types")
 }
 
 model PricingRule {
-  id           String   @id @default(uuid())
-  tenantId     String
-  serviceId    String
-  marginAmount Decimal  @db.Decimal(15, 2)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(uuid())
+  tenantId      String
+  serviceTypeId String
+  price         Decimal  @db.Decimal(15, 2)
+  marginAmount  Decimal  @db.Decimal(15, 2) @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id])
-  service Service @relation(fields: [serviceId], references: [id])
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
 
+  @@unique([tenantId, serviceTypeId])
+  @@index([tenantId])
   @@map("pricing_rules")
 }
 
 model Transaction {
-  id                String   @id @default(uuid())
-  tenantId          String
-  branchId          String
-  customerId        String
-  invoiceNumber     String   @unique
-  trackingCode      String   @unique
-  status            String   @default("DRAFT") // DRAFT, ON_PROCESS, READY_TO_PICKUP, COMPLETED, CLOSED
-  estimatedTotal    Decimal  @db.Decimal(15, 2) @default(0)
-  finalTotal        Decimal  @db.Decimal(15, 2) @default(0)
-  dpAmount          Decimal  @db.Decimal(15, 2) @default(0)
-  remainingAmount   Decimal  @db.Decimal(15, 2) @default(0)
-  refundAmount      Decimal  @db.Decimal(15, 2) @default(0)
+  id                  String            @id @default(uuid())
+  tenantId            String
+  branchId            String
+  customerId          String
+  invoiceNumber       String            @unique
+  trackingCode        String            @unique
+  status              TransactionStatus @default(DRAFT)
+  estimatedTotal      Decimal           @db.Decimal(15, 2) @default(0)
+  finalTotal          Decimal           @db.Decimal(15, 2) @default(0)
+  dpAmount            Decimal           @db.Decimal(15, 2) @default(0)
+  remainingAmount     Decimal           @db.Decimal(15, 2) @default(0)
+  refundAmount        Decimal           @db.Decimal(15, 2) @default(0)
   estimatedFinishDate DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  invoicePath         String?
+  notes               String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id])
-  branch  Branch  @relation(fields: [branchId], references: [id])
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  branch   Branch   @relation(fields: [branchId], references: [id])
   customer Customer @relation(fields: [customerId], references: [id])
-  items   TransactionItem[]
-  payments Payment[]
-  logs    TransactionLog[]
 
-  @@index([tenantId, status])
+  items    TransactionItem[]
+  payments Payment[]
+  logs     TransactionLog[]
+
+  @@index([tenantId])
+  @@index([branchId])
+  @@index([status])
   @@index([invoiceNumber])
   @@index([trackingCode])
   @@map("transactions")
@@ -163,36 +228,52 @@ model TransactionItem {
   id            String   @id @default(uuid())
   transactionId String
   vehicleId     String
-  serviceId     String
+  serviceTypeId String
   price         Decimal  @db.Decimal(15, 2)
   createdAt     DateTime @default(now())
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
   vehicle     Vehicle     @relation(fields: [vehicleId], references: [id])
-  service     Service     @relation(fields: [serviceId], references: [id])
+  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
 
   @@map("transaction_items")
 }
 
 model Payment {
-  id            String   @id @default(uuid())
+  id            String        @id @default(uuid())
   transactionId String
-  amount        Decimal  @db.Decimal(15, 2)
-  type          String   // DP, FINAL, REFUND
-  method        String   // CASH, TRANSFER
-  createdAt     DateTime @default(now())
+  amount        Decimal       @db.Decimal(15, 2)
+  type          PaymentType
+  method        PaymentMethod @default(CASH)
+  notes         String?
+  createdAt     DateTime      @default(now())
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
 
+  @@index([transactionId])
   @@map("payments")
+}
+
+model InvoiceSequence {
+  id       String @id @default(uuid())
+  tenantId String
+  year     Int
+  month    Int
+  lastSeq  Int    @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, year, month])
+  @@map("invoice_sequences")
 }
 
 model TransactionLog {
   id            String   @id @default(uuid())
   transactionId String
-  fromStatus    String
+  fromStatus    String?
   toStatus      String
   notes         String?
+  createdBy     String?
   createdAt     DateTime @default(now())
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
@@ -200,30 +281,57 @@ model TransactionLog {
   @@map("transaction_logs")
 }
 
-model SubscriptionHistory {
-  id        String   @id @default(uuid())
+model Subscription {
+  id        String             @id @default(uuid())
   tenantId  String
   planName  String
   startDate DateTime
   endDate   DateTime
-  price     Decimal  @db.Decimal(15, 2)
-  createdAt DateTime @default(now())
+  price     Decimal            @db.Decimal(15, 2)
+  status    SubscriptionStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
-  @@map("subscription_history")
+  @@index([tenantId])
+  @@map("subscriptions")
 }
 
 model WhatsappQueue {
-  id        String   @id @default(uuid())
-  phone     String
-  message   String
-  mediaUrl  String?
-  status    String   @default("PENDING") // PENDING, SENT, FAILED
-  attempts  Int      @default(0)
-  error     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String         @id @default(uuid())
+  tenantId   String?
+  phone      String
+  message    String
+  mediaUrl   String?
+  status     WhatsappStatus @default(PENDING)
+  attempts   Int            @default(0)
+  maxRetries Int            @default(5)
+  error      String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([status])
   @@map("whatsapp_queue")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  createdBy String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  user   User?   @relation(fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([entity])
+  @@map("audit_logs")
 }

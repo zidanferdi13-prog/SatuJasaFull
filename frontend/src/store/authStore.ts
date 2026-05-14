@@ -9,9 +9,10 @@ interface User {
   name: string;
   email: string;
   role: 'SUPER_ADMIN' | 'OWNER' | 'ADMIN';
+  tenantId: string;
   tenantCode: string;
   tenantName: string;
-  branchId?: string;
+  branchId?: string | null;
 }
 
 interface AuthStore {
@@ -101,13 +102,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     if (!refreshToken) return false;
     try {
       const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-        refresh_token: refreshToken,
+        refreshToken,
       });
-      const newToken: string = data.access_token ?? data.token;
+      const newToken: string = data.data?.accessToken ?? data.data?.token ?? '';
+      const newRefreshToken: string = data.data?.refreshToken ?? refreshToken;
       if (typeof window !== 'undefined') {
         localStorage.setItem('token', newToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+        document.cookie = `token=${newToken}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
       }
-      set({ token: newToken, isAuthenticated: true });
+      set({ token: newToken, refreshToken: newRefreshToken, isAuthenticated: true });
       return true;
     } catch {
       return false;
