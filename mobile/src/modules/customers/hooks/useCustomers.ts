@@ -1,26 +1,38 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { customerService } from '../services/customer.service';
+import { customerService, CustomerPayload } from '../services/customer.service';
 
-export function useCustomers() {
+export function useCustomers(search?: string) {
   return useQuery({
-    queryKey: ['customers'],
-    queryFn: customerService.list,
+    queryKey: ['customers', search],
+    queryFn: () => customerService.list({ search }),
+    select: (result) => result.customers,
     staleTime: 60_000,
   });
 }
 
-export function useCustomerSearch(q: string) {
+export function useCustomer(id: string) {
   return useQuery({
-    queryKey: ['customers', 'search', q],
-    queryFn: () => customerService.search(q),
-    enabled: q.length >= 2,
+    queryKey: ['customer', id],
+    queryFn: () => customerService.getById(id),
+    enabled: !!id,
   });
 }
 
 export function useCreateCustomer() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: customerService.create,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['customers'] }),
+    mutationFn: (payload: CustomerPayload) => customerService.create(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
+  });
+}
+
+export function useUpdateCustomer(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Partial<CustomerPayload>) => customerService.update(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      qc.invalidateQueries({ queryKey: ['customer', id] });
+    },
   });
 }
