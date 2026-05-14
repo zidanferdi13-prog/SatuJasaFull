@@ -30,3 +30,9 @@ export const updateTenantStatusSchema = z.object({
     isActive: z.boolean().optional(),
   }),
 });
+
+export const resetOwnerPasswordSchema = z.object({
+  body: z.object({
+    newPassword: z.string().min(8, 'Password minimal 8 karakter'),
+  }),
+});

@@ -1,5 +1,5 @@
 import api from '../../../shared/services/api';
-import { Tenant, CreateTenantDTO } from '../../../shared/types';
+import { Tenant, TenantDetail, CreateTenantDTO } from '../../../shared/types';
 
 export interface TenantFilters {
   page?: number;
@@ -20,9 +20,9 @@ export const tenantService = {
   },
 
   // GET /tenants/:id
-  getById: async (id: string): Promise<Tenant> => {
+  getById: async (id: string): Promise<TenantDetail> => {
     const { data } = await api.get(`/tenants/${id}`);
-    return data.data as Tenant;
+    return data.data as TenantDetail;
   },
 
   // POST /tenants  (registered via POST /auth/register-tenant)
@@ -50,5 +50,10 @@ export const tenantService = {
   impersonate: async (id: string): Promise<{ accessToken: string; refreshToken: string }> => {
     const { data } = await api.post(`/tenants/${id}/impersonate`);
     return data.data;
+  },
+
+  // PATCH /tenants/:id/reset-password
+  resetOwnerPassword: async (id: string, newPassword: string): Promise<void> => {
+    await api.patch(`/tenants/${id}/reset-password`, { newPassword });
   },
 };

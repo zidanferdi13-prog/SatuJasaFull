@@ -139,6 +139,7 @@ export class AuthService {
     planName: string;
     planPrice: number;
   }) {
+    console.log('Registering tenant with data:', data);
     const hash = await bcrypt.hash(data.ownerPassword, 12);
     const subStart = new Date();
     const subEnd = new Date();

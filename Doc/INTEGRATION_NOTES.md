@@ -1,7 +1,7 @@
 # Integration Notes — STNK Bureau SaaS
 
 > Source of truth: `backend/README.md` and `frontend/README.md`  
-> Last audit: 2026-05-12
+> Last audit: 2026-05-14
 
 ---
 
@@ -261,3 +261,13 @@ Services using `r.data.data` pattern: all except the `auth.service.ts` which use
 | 14 | `frontend/modules/tenants/services/tenant.service.ts` | Called `/admin/tenants` (wrong prefix) | Changed to `/tenants`; fixed `create` to use `/auth/register-tenant`; fixed `updateSubscription` to use `PATCH /tenants/:id/status` |
 | 15 | `frontend/modules/subscriptions/services/subscription.service.ts` | Called `/admin/subscriptions` (non-existent) | Mapped to `/tenants` list + `PATCH /tenants/:id/status` |
 | 16 | `frontend/modules/analytics/services/analytics.service.ts` | Called `/analytics/revenue` (non-existent) | Mapped to `/exports/revenue` and `/dashboard/*` endpoints |
+| 17 | `frontend/modules/tracking/services/tracking.service.ts` | `TrackingInfo` type used flat fields (`customerName`, `vehiclePlate`, `tenantName`, `services`, flat `timeline`) | Updated to match backend response: nested `tenant`, `branch`, `customer`, `items`, `payments`, `timeline` with correct field names |
+| 18 | `frontend/app/(public)/tracking/[trackingCode]/page.tsx` | Used `data.tenantName`, `data.customerName`, `data.vehiclePlate`, `item.status`, `item.note`, `item.timestamp` | Fixed to `data.tenant.name`, `data.customer.name`, `data.items[0]?.vehicle?.plateNumber`, `item.toStatus`, `item.notes`, `item.createdAt` |
+| 19 | `frontend/modules/branches/services/branch.service.ts` | `listByTenant()` called `/admin/tenants/:id/branches` (non-existent endpoint) | Changed to `GET /tenants/:id` and extract `data.branches` |
+| 20 | `frontend/modules/notifications/services/` | Empty — no service file | Created `notification.service.ts` calling `GET /notifications/queue` and `POST /notifications/:id/retry` |
+| 21 | `frontend/modules/notifications/hooks/` | Empty — no hook file | Created `useNotifications.ts` with `useNotificationQueue()` and `useRetryNotification()` |
+| 22 | `frontend/modules/audit/services/` | Empty — no service file | Created `audit.service.ts` calling `GET /audit-logs` |
+| 23 | `frontend/modules/audit/hooks/` | Empty — no hook file | Created `useAuditLogs.ts` with `useAuditLogs(filters)` |
+| 24 | `frontend/modules/vehicles/services/` | Empty — no service file | Created `vehicle.service.ts` with full CRUD |
+| 25 | `frontend/modules/vehicles/hooks/` | Empty — no hook file | Created `useVehicles.ts` with full CRUD hooks |
+| 26 | `frontend/modules/settings/services/` | Empty — no service file | Created `service-type.service.ts` with `serviceTypeService` and `pricingService` |

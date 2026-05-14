@@ -132,9 +132,11 @@ Subscription data lives on the `Tenant` model. There is no separate `/subscripti
 
 | Frontend | Backend |
 |---|---|
-| *(to be implemented)* | `GET /notifications/queue?status=&page=&limit=` |
-| *(mutation)* | `POST /notifications/:id/retry` |
-| `app/(admin)/notifications/page.tsx` | Admin notification monitor |
+| `modules/notifications/services/notification.service.ts` → `listQueue(filters)` | `GET /notifications/queue?status=&page=&limit=` |
+| `modules/notifications/services/notification.service.ts` → `retry(id)` | `POST /notifications/:id/retry` |
+| `modules/notifications/hooks/useNotifications.ts` → `useNotificationQueue(filters)` | Auto-refreshes every 30s |
+| `modules/notifications/hooks/useNotifications.ts` → `useRetryNotification()` | Mutation + invalidates queue |
+| `app/(admin)/admin/notifications/page.tsx` | Admin notification monitor (stub — needs wiring to hook) |
 
 ---
 
@@ -142,8 +144,9 @@ Subscription data lives on the `Tenant` model. There is no separate `/subscripti
 
 | Frontend | Backend |
 |---|---|
-| *(to be implemented)* | `GET /audit-logs?entity=&action=&page=&limit=` |
-| `app/(admin)/audit/page.tsx` | Super admin audit trail |
+| `modules/audit/services/audit.service.ts` → `list(filters)` | `GET /audit-logs?entity=&action=&page=&limit=` |
+| `modules/audit/hooks/useAuditLogs.ts` → `useAuditLogs(filters)` | SUPER_ADMIN or OWNER only |
+| `app/(admin)/admin/audit/page.tsx` | Super admin audit trail (stub — needs wiring to hook) |
 
 ---
 
@@ -152,7 +155,20 @@ Subscription data lives on the `Tenant` model. There is no separate `/subscripti
 | Frontend | Backend |
 |---|---|
 | `modules/tracking/services/tracking.service.ts` → `getByCode()` | `GET /tracking/:trackingCode` |
+| `modules/tracking/hooks/useTracking.ts` → `useTracking(code)` | Auto-refreshes every 60s |
 | `app/(public)/tracking/[trackingCode]/page.tsx` | Public tracking page |
+
+**Type mapping** (backend response → frontend `TrackingInfo`):
+
+| API field | TrackingInfo field |
+|---|---|
+| `tenant.name` | `data.tenant.name` |
+| `tenant.logoUrl` | `data.tenant.logoUrl` |
+| `customer.name` | `data.customer.name` |
+| `items[].vehicle.plateNumber` | `data.items[i].vehicle.plateNumber` |
+| `timeline[].toStatus` | `data.timeline[i].toStatus` |
+| `timeline[].notes` | `data.timeline[i].notes` |
+| `timeline[].createdAt` | `data.timeline[i].createdAt` |
 
 ---
 
@@ -166,13 +182,32 @@ Subscription data lives on the `Tenant` model. There is no separate `/subscripti
 
 ---
 
+## Vehicles
+
+| Frontend | Backend |
+|---|---|
+| `modules/vehicles/services/vehicle.service.ts` → `list(filters)` | `GET /vehicles?page=&limit=&search=&customerId=` |
+| `modules/vehicles/services/vehicle.service.ts` → `getById(id)` | `GET /vehicles/:id` |
+| `modules/vehicles/services/vehicle.service.ts` → `create(payload)` | `POST /vehicles` |
+| `modules/vehicles/services/vehicle.service.ts` → `update(id, payload)` | `PUT /vehicles/:id` |
+| `modules/vehicles/hooks/useVehicles.ts` → `useVehicles(filters)` | Vehicle list |
+| `modules/vehicles/hooks/useVehicles.ts` → `useVehicle(id)` | Single vehicle |
+| `modules/vehicles/hooks/useVehicles.ts` → `useCreateVehicle()` | Mutation + invalidates list |
+
+---
+
 ## Settings / Service Types / Pricing
 
 | Frontend | Backend |
 |---|---|
-| *(to be implemented)* | `GET/POST /service-types`, `PATCH /service-types/:id/status` |
-| *(to be implemented)* | `GET/POST/PUT /pricing-rules` |
-| `app/(dashboard)/settings/page.tsx` | Tenant settings |
+| `modules/settings/services/service-type.service.ts` → `serviceTypeService.list()` | `GET /service-types` |
+| `modules/settings/services/service-type.service.ts` → `serviceTypeService.create()` | `POST /service-types` |
+| `modules/settings/services/service-type.service.ts` → `serviceTypeService.update()` | `PUT /service-types/:id` |
+| `modules/settings/services/service-type.service.ts` → `serviceTypeService.updateStatus()` | `PATCH /service-types/:id/status` |
+| `modules/settings/services/service-type.service.ts` → `pricingService.list()` | `GET /pricing-rules` |
+| `modules/settings/services/service-type.service.ts` → `pricingService.create()` | `POST /pricing-rules` |
+| `modules/settings/services/service-type.service.ts` → `pricingService.update()` | `PUT /pricing-rules/:id` |
+| `app/(dashboard)/settings/page.tsx` | Tenant settings (stub — needs wiring) |
 
 ---
 
@@ -203,5 +238,8 @@ Backend adds `tenantName` to the auth response user object (not in JWT).
 | `['tenants', id]` | Single tenant |
 | `['customers']` | Customer list |
 | `['branches']` | Branch list |
-| `['notifications']` | WhatsApp queue |
-| `['audit-logs']` | Audit log list |
+| `['vehicles', filters]` | Vehicle list |
+| `['vehicles', id]` | Single vehicle |
+| `['notifications-queue', filters]` | WhatsApp queue |
+| `['audit-logs', filters]` | Audit log list |
+| `['tracking', trackingCode]` | Public tracking info |

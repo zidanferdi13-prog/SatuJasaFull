@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { branchService } from '../services/branch.service';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { branchService, CreateBranchDTO } from '../services/branch.service';
 
 export function useBranches() {
   return useQuery({
@@ -14,5 +14,13 @@ export function useTenantBranches(tenantId: string) {
     queryKey: ['branches', tenantId],
     queryFn: () => branchService.listByTenant(tenantId),
     enabled: !!tenantId,
+  });
+}
+
+export function useCreateBranch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateBranchDTO) => branchService.create(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['branches'] }),
   });
 }

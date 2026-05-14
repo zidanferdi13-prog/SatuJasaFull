@@ -6,8 +6,8 @@ WORKDIR /app/frontend
 # Copy package files
 COPY frontend/package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install all dependencies (needed for build)
+RUN npm ci
 
 # Copy source code and config
 COPY frontend/src ./src
@@ -16,32 +16,27 @@ COPY frontend/next.config.js ./
 COPY frontend/tsconfig.json ./
 COPY frontend/next-env.d.ts ./
 
-# Build Next.js
+# Build Next.js (outputs standalone bundle)
 RUN npm run build
 
-# Production image
+# Production image — minimal standalone server
 FROM node:20-alpine
 
 WORKDIR /app/frontend
 
-# Copy package files
-COPY frontend/package*.json ./
+# Copy standalone server and its bundled node_modules
+COPY --from=builder /app/frontend/.next/standalone ./
 
-# Install production dependencies only
-RUN npm install --omit=dev
-
-# Copy built app from builder
-COPY --from=builder /app/frontend/.next ./.next
-COPY --from=builder /app/frontend/src ./src
+# Copy static assets
+COPY --from=builder /app/frontend/.next/static ./.next/static
 COPY --from=builder /app/frontend/public ./public
-COPY --from=builder /app/frontend/next.config.js ./
 
 # Expose port
 EXPOSE 3000
 
-# Set environment
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
-# Start server
-CMD ["npm", "start"]
+# Standalone output exposes a self-contained server.js
+CMD ["node", "server.js"]

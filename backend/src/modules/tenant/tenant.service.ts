@@ -97,6 +97,15 @@ export class TenantService {
     return { accessToken: token, tenant: { id: tenant.id, name: tenant.name, code: tenant.code } };
   }
 
+  static async resetOwnerPassword(tenantId: string, newPassword: string) {
+    const bcrypt = await import('bcryptjs');
+    const owner = await prisma.user.findFirst({ where: { tenantId, role: 'OWNER' } });
+    if (!owner) throw Object.assign(new Error('Tenant owner not found'), { statusCode: 404 });
+    const hash = await bcrypt.default.hash(newPassword, 12);
+    await prisma.user.update({ where: { id: owner.id }, data: { passwordHash: hash } });
+    return { success: true };
+  }
+
   static async uploadLogo(tenantId: string, filePath: string) {
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw Object.assign(new Error('Tenant not found'), { statusCode: 404 });

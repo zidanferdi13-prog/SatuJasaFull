@@ -10,9 +10,9 @@ WORKDIR /app/backend
 COPY backend/package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
-# Copy Prisma schema
+# Copy Prisma schema and migrations
 COPY backend/prisma ./prisma
 
 # Generate Prisma client
@@ -26,13 +26,12 @@ COPY backend/public ./public
 # Build TypeScript
 RUN npm run build
 
+# Create persistent storage directories
+RUN mkdir -p storage/invoices uploads/tenant-logos
+
 # Expose port
 EXPOSE 3000
 
-CMD ["node", "dist/index.js"]
-
-# Set environment
 ENV NODE_ENV=production
 
-# Start server
 CMD ["npm", "start"]

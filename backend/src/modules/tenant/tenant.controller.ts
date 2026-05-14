@@ -47,6 +47,13 @@ export class TenantController {
     } catch (err) { next(err); }
   }
 
+  static async resetOwnerPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await TenantService.resetOwnerPassword(req.params.id, req.body.newPassword);
+      return sendSuccess(res, result, 'Owner password reset successfully');
+    } catch (err) { next(err); }
+  }
+
   static async uploadLogo(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });

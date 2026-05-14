@@ -44,3 +44,27 @@ export function useUpdateTenantStatus() {
 
 // Legacy alias
 export const useUpdateSubscription = useUpdateTenantStatus;
+
+export function useUpdateTenant(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name?: string; phone?: string; address?: string }) =>
+      tenantService.update(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants', id] });
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+    },
+  });
+}
+
+export function useImpersonateTenant() {
+  return useMutation({
+    mutationFn: (id: string) => tenantService.impersonate(id),
+  });
+}
+
+export function useResetOwnerPassword(id: string) {
+  return useMutation({
+    mutationFn: (newPassword: string) => tenantService.resetOwnerPassword(id, newPassword),
+  });
+}

@@ -15,10 +15,10 @@ export const registerTenantSchema = z.object({
     address: z.string().optional(),
     ownerName: z.string().min(2),
     ownerEmail: z.string().email(),
-    ownerPassword: z.string().min(8),
-    subscriptionMonths: z.number().int().min(1).max(24).default(12),
+    ownerPassword: z.string().min(8, 'Password minimal 8 karakter'),
+    subscriptionMonths: z.coerce.number().int().min(1).max(24).default(12),
     planName: z.string().default('Standard'),
-    planPrice: z.number().nonnegative().default(0),
+    planPrice: z.coerce.number().nonnegative().default(0),
   }),
 });
 

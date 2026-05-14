@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../../store/authStore';
 
 const API_BASE_URL =
@@ -34,23 +34,60 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// ── Concurrent 401 handling — queue pending requests during token refresh ────
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}> = [];
+
+function processQueue(error: unknown, token: string | null) {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error);
+    else resolve(token as string);
+  });
+  failedQueue = [];
+}
+
 // ── Response interceptor: handle 401 / 402 ──────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      const refreshed = await useAuthStore.getState().refreshSession();
-      if (refreshed && error.config) {
-        // Retry original request with new token
-        const token = useAuthStore.getState().token;
-        if (token && error.config.headers) {
-          error.config.headers.Authorization = `Bearer ${token}`;
-        }
-        return api.request(error.config);
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // Queue this request until the active refresh finishes
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api.request(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
       }
-      useAuthStore.getState().logout();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshed = await useAuthStore.getState().refreshSession();
+        if (refreshed) {
+          const token = useAuthStore.getState().token as string;
+          processQueue(null, token);
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api.request(originalRequest);
+        }
+        processQueue(error, null);
+        useAuthStore.getState().logout();
+        if (typeof window !== 'undefined') window.location.href = '/login';
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        useAuthStore.getState().logout();
+        if (typeof window !== 'undefined') window.location.href = '/login';
+      } finally {
+        isRefreshing = false;
       }
     }
 

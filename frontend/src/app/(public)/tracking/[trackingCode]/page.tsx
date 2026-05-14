@@ -45,7 +45,7 @@ export default function TrackingPage({ params }: PageProps) {
       {/* Header */}
       <div style={{ background: '#007AFF', padding: '20px 24px', color: 'white' }}>
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{data.tenantName}</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>{data.tenant.name}</div>
           <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>Status Pengerjaan STNK</div>
         </div>
       </div>
@@ -73,11 +73,11 @@ export default function TrackingPage({ params }: PageProps) {
           <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <div style={{ fontSize: 12, color: '#999' }}>Customer</div>
-              <div style={{ fontWeight: 600 }}>{data.customerName}</div>
+              <div style={{ fontWeight: 600 }}>{data.customer.name}</div>
             </div>
             <div>
               <div style={{ fontSize: 12, color: '#999' }}>Plat Nomor</div>
-              <div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{data.vehiclePlate}</div>
+              <div style={{ fontWeight: 600, fontFamily: 'monospace' }}>{data.items[0]?.vehicle?.plateNumber ?? '-'}</div>
             </div>
           </div>
 
@@ -115,15 +115,15 @@ export default function TrackingPage({ params }: PageProps) {
             {data.timeline.map((item, idx) => (
               <div key={idx} style={{ display: 'flex', gap: 12, marginBottom: idx < data.timeline.length - 1 ? 16 : 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[item.status] ?? '#007AFF', marginTop: 4 }} />
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: STATUS_COLOR[item.toStatus] ?? '#007AFF', marginTop: 4 }} />
                   {idx < data.timeline.length - 1 && (
                     <div style={{ width: 2, flex: 1, background: '#e5e5e5', marginTop: 4 }} />
                   )}
                 </div>
                 <div style={{ flex: 1, paddingBottom: 8 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{STATUS_LABEL[item.status] ?? item.status}</div>
-                  {item.note && <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{item.note}</div>}
-                  <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>{formatDateTime(item.timestamp)}</div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{STATUS_LABEL[item.toStatus] ?? item.toStatus}</div>
+                  {item.notes && <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{item.notes}</div>}
+                  <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>{formatDateTime(item.createdAt)}</div>
                 </div>
               </div>
             ))}

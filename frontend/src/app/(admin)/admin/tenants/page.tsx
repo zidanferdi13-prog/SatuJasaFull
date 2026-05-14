@@ -34,20 +34,28 @@ export default function TenantsPage() {
   const [form, setForm] = useState({
     code: '',
     name: '',
+    phone: '',
+    address: '',
     ownerName: '',
     ownerEmail: '',
     ownerPassword: '',
     subscriptionMonths: 12,
+    planName: 'Standard',
+    planPrice: 0,
   });
+
+  const emptyForm = { code: '', name: '', phone: '', address: '', ownerName: '', ownerEmail: '', ownerPassword: '', subscriptionMonths: 12, planName: 'Standard', planPrice: 0 };
 
   const handleCreate = () => {
     if (!form.code || !form.name || !form.ownerName || !form.ownerEmail || !form.ownerPassword)
       return;
 
+    console.log('Creating tenant with data:', form);
+
     createMutation.mutate(form, {
       onSuccess: () => {
         setShowModal(false);
-        setForm({ code: '', name: '', ownerName: '', ownerEmail: '', ownerPassword: '', subscriptionMonths: 12 });
+        setForm(emptyForm);
       },
     });
   };
@@ -141,12 +149,17 @@ export default function TenantsPage() {
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Buat Tenant Baru">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {[
-            { label: 'Kode Tenant', key: 'code', placeholder: 'birojasa1', type: 'text' },
-            { label: 'Nama Tenant', key: 'name', placeholder: 'Biro Jasa STNK Jakarta Pusat', type: 'text' },
-            { label: 'Nama Owner', key: 'ownerName', placeholder: 'Budi Santoso', type: 'text' },
-            { label: 'Email Owner', key: 'ownerEmail', placeholder: 'owner@example.com', type: 'email' },
-            { label: 'Password Owner', key: 'ownerPassword', placeholder: 'Min. 8 karakter', type: 'password' },
-          ].map(({ label, key, placeholder, type }) => (
+            { label: 'Nama Tenant', key: 'name', placeholder: 'Biro Jasa ABC', type: 'text' },
+            { label: 'Kode Tenant', key: 'code', placeholder: 'BIROJASA1', type: 'text', hint: 'Hanya huruf dan angka, maks 10 karakter (contoh: BIROJASA1)' },
+            { label: 'Nomor HP Pemilik', key: 'phone', placeholder: '08123456789', type: 'text' },
+            { label: 'Alamat Tenant', key: 'address', placeholder: 'Jl. Merdeka No. 123, Jakarta', type: 'text' },
+            { label: 'Nama Pemilik', key: 'ownerName', placeholder: 'Budi Santoso', type: 'text' },
+            { label: 'Email Pemilik', key: 'ownerEmail', placeholder: 'stnk@gmail.com', type: 'email' },
+            { label: 'Password Pemilik', key: 'ownerPassword', placeholder: 'Min. 8 karakter', type: 'password', hint: 'Minimal 8 karakter' },
+            { label: 'Durasi Langganan (bulan)', key: 'subscriptionMonths', placeholder: '12', type: 'number' },
+            { label: 'Paket Langganan', key: 'planName', placeholder: 'Standard', type: 'text' },
+            { label: 'Harga Paket (IDR)', key: 'planPrice', placeholder: '0', type: 'number' },
+          ].map(({ label, key, placeholder, type, hint }) => (
             <div key={key}>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
                 {label}
@@ -156,8 +169,12 @@ export default function TenantsPage() {
                 type={type}
                 placeholder={placeholder}
                 value={form[key as keyof typeof form]}
-                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                onChange={(e) => {
+                  const val = type === 'number' ? (parseFloat(e.target.value) || 0) : e.target.value;
+                  setForm({ ...form, [key]: val });
+                }}
               />
+              {hint && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#888' }}>{hint}</p>}
             </div>
           ))}
 
@@ -187,6 +204,22 @@ export default function TenantsPage() {
               {createMutation.isPending ? 'Menyimpan...' : 'Buat Tenant'}
             </button>
           </div>
+
+          {createMutation.isError && (() => {
+            const err = createMutation.error as any;
+            const msg: string = err?.response?.data?.message || 'Gagal membuat tenant';
+            const errors: { field: string; message: string }[] = err?.response?.data?.errors || [];
+            return (
+              <div style={{ background: '#fce4ec', border: '1px solid #ef9a9a', borderRadius: 8, padding: 12, fontSize: 13, color: '#c62828' }}>
+                <strong>{msg}</strong>
+                {errors.map((e) => (
+                  <div key={e.field} style={{ marginTop: 4 }}>
+                    • <b>{e.field.replace('body.', '')}</b>: {e.message}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </Modal>
     </div>

@@ -25,6 +25,11 @@ export interface Tenant {
   _count?: { transactions: number; users: number; branches: number };
 }
 
+export interface TenantDetail extends Tenant {
+  branches: { id: string; name: string; isActive: boolean }[];
+  subscriptions: { id: string; planName: string; startDate: string; endDate: string; price: number; status: string }[];
+}
+
 export interface CreateTenantDTO {
   code: string;
   name: string;

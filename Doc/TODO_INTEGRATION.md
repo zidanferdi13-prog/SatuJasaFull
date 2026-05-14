@@ -1,47 +1,56 @@
 # TODO Integration — STNK Bureau SaaS
 
-> Remaining gaps between frontend and backend after initial audit (2026-05-12).
+> Remaining gaps between frontend and backend after second audit (2026-05-14).
 > Items are ordered by priority.
+> Items marked ✅ were resolved in the 2026-05-14 audit pass.
+
+---
+
+## ✅ Resolved (2026-05-14)
+
+| # | Item | Resolution |
+|---|---|---|
+| R1 | Branch `listByTenant()` called non-existent `/admin/tenants/:id/branches` | Changed to `GET /tenants/:id` → extract `data.branches` |
+| R2 | `TrackingInfo` type mismatched API response | Replaced flat type with nested `tenant`, `branch`, `customer`, `items`, `payments`, `timeline` shape |
+| R3 | Tracking page used `data.customerName`, `data.vehiclePlate`, `item.status`, `item.note`, `item.timestamp` | Fixed to `data.customer.name`, `data.items[0].vehicle.plateNumber`, `item.toStatus`, `item.notes`, `item.createdAt` |
+| R4 | `notifications/services/` empty | Created `notification.service.ts` + `useNotifications.ts` hook |
+| R5 | `audit/services/` empty | Created `audit.service.ts` + `useAuditLogs.ts` hook |
+| R6 | `vehicles/services/` empty | Created `vehicle.service.ts` + `useVehicles.ts` hook |
+| R7 | `settings/services/` empty | Created `service-type.service.ts` with `serviceTypeService` + `pricingService` |
 
 ---
 
 ## 🔴 P1 — Blocking / Critical
 
-### 1. Branch "list by tenant" endpoint missing
-- **File**: `frontend/src/modules/branches/services/branch.service.ts` → `listByTenant(tenantId)`
-- **Problem**: Calls `GET /admin/tenants/:id/branches` — this endpoint does not exist in the backend.
-- **Fix**: Either (a) add `GET /tenants/:id/branches` to the backend tenant router, or (b) for SUPER_ADMIN context, fetch the tenant detail (`GET /tenants/:id`) which already includes `branches[]`.
-- **Backend change needed**: Add `router.get('/:id/branches', TenantController.listBranches)` in `tenant.routes.ts`.
-
-### 2. Payments UI not implemented
+### 1. Payments UI not implemented
 - **Files**: Transaction detail page (`app/(dashboard)/transactions/[id]/page.tsx`)
 - **Problem**: No UI to display or add payments. `GET /transactions/:id/payments` and `POST /transactions/:id/payments` exist but have no frontend hooks or components.
 - **Fix**: Add `usePayments(transactionId)` and `useCreatePayment()` hooks; add payment list + form to transaction detail page.
 
-### 3. Notification queue page not wired
-- **File**: `app/(admin)/notifications/page.tsx`
-- **Problem**: No service/hook for notification queue. No frontend module exists for notifications.
-- **Fix**: Create `modules/notifications/services/notification.service.ts` calling `GET /notifications/queue` and `POST /notifications/:id/retry`. Add `useNotificationQueue()` hook.
+### 2. Notification queue page not wired
+- **File**: `app/(admin)/admin/notifications/page.tsx`
+- **Problem**: Service and hooks now exist (`notification.service.ts`, `useNotifications.ts`) but the page is still a stub — not wired to the hook.
+- **Fix**: Wire `useNotificationQueue()` and `useRetryNotification()` into the notifications page. Build a table showing `WhatsAppQueueItem` list with a retry button.
 
-### 4. Audit log page not wired
-- **File**: `app/(admin)/audit/page.tsx`
-- **Problem**: No service/hook for audit logs.
-- **Fix**: Create `modules/audit/services/audit.service.ts` calling `GET /audit-logs`. Add `useAuditLogs()` hook with filter support.
+### 3. Audit log page not wired
+- **File**: `app/(admin)/admin/audit/page.tsx`
+- **Problem**: Service and hook now exist (`audit.service.ts`, `useAuditLogs.ts`) but the page is still a stub.
+- **Fix**: Wire `useAuditLogs(filters)` into the audit page. Build a table with entity/action filter selectors.
 
 ---
 
 ## 🟡 P2 — Important but not blocking login/core flow
 
-### 5. Service types and pricing not implemented in frontend
+### 4. Service types and pricing not wired in settings page
 - **Files**: `app/(dashboard)/settings/page.tsx`
-- **Problem**: No service layer for `GET/POST /service-types` or `GET/POST/PUT /pricing-rules`.
-- **Fix**: Create `modules/settings/services/` with `serviceTypeService` and `pricingService`.
+- **Problem**: `serviceTypeService` and `pricingService` now exist but the settings page is a stub with no hooks or UI.
+- **Fix**: Create hooks for `useServiceTypes()` and `usePricingRules()`, wire into settings page.
 
-### 6. Vehicle service has no CRUD hooks
-- **Problem**: `GET/POST/PUT /vehicles` backend routes exist but frontend has no service file under `modules/vehicles/`.
-- **Fix**: Create `modules/vehicles/services/vehicle.service.ts` + `useVehicles()` hook.
+### 5. Vehicle page has no CRUD UI
+- **Problem**: `vehicleService` and `useVehicles` hook now exist but no UI to list/create/edit vehicles.
+- **Fix**: Wire into `app/(dashboard)/vehicles/page.tsx`.
 
-### 7. Revenue / analytics charts are stubs
+### 6. Revenue / analytics charts are stubs
 - **File**: `modules/analytics/services/analytics.service.ts`
 - **Problem**: `getRevenueSummary` maps to `GET /exports/revenue` which returns a flat summary, not a time-series. The old `getRevenue()` / `getBranchRevenue()` returning `RevenueData[]` had no backing endpoint. Time-series revenue charts cannot be rendered with current backend data.
 - **Fix**: Either (a) add a `GET /analytics/revenue?group_by=month` endpoint to the backend, or (b) use the Excel export + parse client-side (impractical). Recommend option (a).
@@ -99,7 +108,7 @@
 
 | Endpoint | Purpose | Priority |
 |---|---|---|
-| `GET /tenants/:id/branches` | Super admin view of a tenant's branches | P1 |
+| ~~`GET /tenants/:id/branches`~~ | Resolved: use `GET /tenants/:id` and extract `branches[]` | ✅ |
 | `GET /analytics/revenue?group_by=month` | Time-series revenue for charts | P2 |
 | `POST /auth/forgot-password` | Password reset request | P3 |
 | `POST /auth/reset-password` | Password reset with token | P3 |
@@ -109,10 +118,15 @@
 
 ## Type Safety Gaps
 
-| File | Gap |
-|---|---|
-| `modules/branches/services/branch.service.ts` | `listByTenant()` points to non-existent endpoint — see P1#1 |
-| `app/(dashboard)/**` | Pages reference `Tenant.status` — renamed to `subscriptionStatus` |
-| Any page using `LoginResponse.token` | Renamed to `accessToken` |
-| Any page using `AdminKpis.totalTenants` only | Now also has `platformMonthlyRevenue`, `whatsappQueuePending` |
-| Any page using `DashboardKpis.activeTransactions` only | Now also has `totalRefund`, `closedToday`, `overdueTransactions` |
+| File | Gap | Status |
+|---|---|---|
+| `modules/branches/services/branch.service.ts` | `listByTenant()` now uses `GET /tenants/:id` → `branches[]` | ✅ Fixed |
+| `modules/tracking/services/tracking.service.ts` | `TrackingInfo` type updated to match API response | ✅ Fixed |
+| `app/(public)/tracking/[trackingCode]/page.tsx` | Field references updated to match new `TrackingInfo` | ✅ Fixed |
+| Any page using `LoginResponse.token` | Renamed to `accessToken` | ✅ Fixed |
+| Any page using `AdminKpis.totalTenants` only | Now also has `platformMonthlyRevenue`, `whatsappQueuePending` | ✅ Fixed |
+| Any page using `DashboardKpis.activeTransactions` only | Now also has `totalRefund`, `closedToday`, `overdueTransactions` | ✅ Fixed |
+| `app/(admin)/admin/notifications/page.tsx` | Page is a stub — not wired to `useNotificationQueue()` | ⬜ P1 |
+| `app/(admin)/admin/audit/page.tsx` | Page is a stub — not wired to `useAuditLogs()` | ⬜ P1 |
+| `app/(dashboard)/vehicles/page.tsx` | Page exists but no CRUD UI using `useVehicles()` | ⬜ P2 |
+| `app/(dashboard)/settings/page.tsx` | Page is a stub — not wired to service types / pricing | ⬜ P2 |
