@@ -23,6 +23,6 @@ export const errorMiddleware = (
   }
 
   const status = err.statusCode || err.status || 500;
-  const message = status < 500 ? err.message : 'Internal server error';
+  const message = status < 500 || err.expose ? err.message : 'Internal server error';
   return sendError(res, message, status);
 };

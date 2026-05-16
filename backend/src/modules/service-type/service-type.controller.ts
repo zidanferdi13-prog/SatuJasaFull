@@ -12,7 +12,8 @@ export class ServiceTypeController {
 
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const st = await ServiceTypeService.create(req.body);
+      const tenantId = req.user!.role === 'SUPER_ADMIN' ? null : req.user!.tenant_id;
+      const st = await ServiceTypeService.create(tenantId, req.body);
       return sendSuccess(res, st, 'Service type created', 201);
     } catch (err) { next(err); }
   }

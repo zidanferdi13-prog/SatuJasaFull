@@ -87,16 +87,16 @@ export interface ServiceType {
   name: string;
   description?: string;
   isActive: boolean;
+  pricingRules?: PricingRule[];
 }
 
 export interface PricingRule {
   id: string;
   tenantId: string;
-  serviceTypeId?: string;
+  serviceTypeId: string;
   serviceType?: ServiceType;
-  name: string;
-  description?: string;
   price: number;
+  marginAmount: number;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -107,7 +107,10 @@ export interface TransactionItem {
   transactionId: string;
   vehicleId: string;
   serviceTypeId: string;
-  estimatedPrice: number;
+  price: number;
+  baseCost: number;
+  serviceFee: number;
+  estimatedPrice?: number;
   finalPrice?: number;
   vehicle?: Vehicle;
   serviceType?: ServiceType;
@@ -140,6 +143,8 @@ export interface Transaction {
   status: TransactionStatus;
   estimatedTotal: number;
   finalTotal?: number;
+  baseCostTotal?: number;
+  serviceFeeTotal?: number;
   dpAmount: number;
   remainingAmount?: number;
   refundAmount?: number;

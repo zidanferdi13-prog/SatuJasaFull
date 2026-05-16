@@ -31,7 +31,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function EditVehicleScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const id = String(params.id ?? '');
   const router = useRouter();
   const { data: vehicle } = useVehicle(id);
   const updateMutation = useUpdateVehicle(id);

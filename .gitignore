@@ -39,6 +39,8 @@ yarn-error.log*
 # Cache
 .cache/
 .eslintcache
+.claude/
+
 
 # Testing
 coverage/

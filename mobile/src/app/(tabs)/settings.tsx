@@ -6,12 +6,13 @@ import {
   Pressable,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/modules/auth/services/auth.service';
-import { Colors, Spacing, Typography, Shadow, BorderRadius } from '@/theme';
+import { Colors, Spacing, Shadow, BorderRadius } from '@/theme';
 
 interface MenuItemProps {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -19,20 +20,21 @@ interface MenuItemProps {
   sublabel?: string;
   onPress: () => void;
   color?: string;
-  danger?: boolean;
 }
 
-function MenuItem({ icon, label, sublabel, onPress, color, danger }: MenuItemProps) {
+function MenuItem({ icon, label, sublabel, onPress, color }: MenuItemProps) {
   return (
     <Pressable style={styles.menuItem} onPress={onPress}>
-      <View style={[styles.menuIcon, { backgroundColor: (color || Colors.primary) + '15' }]}>
-        <Ionicons name={icon} size={20} color={color || Colors.primary} />
+      <View style={styles.menuLeft}>
+        <View style={[styles.menuIcon, { backgroundColor: (color || Colors.primary) + '14' }]}>
+          <Ionicons name={icon} size={22} color={color || Colors.primary} />
+        </View>
+        <View style={styles.menuContent}>
+          <Text style={styles.menuLabel}>{label}</Text>
+          {sublabel && <Text style={styles.menuSublabel}>{sublabel}</Text>}
+        </View>
       </View>
-      <View style={styles.menuContent}>
-        <Text style={[styles.menuLabel, danger && styles.dangerText]}>{label}</Text>
-        {sublabel && <Text style={styles.menuSublabel}>{sublabel}</Text>}
-      </View>
-      {!danger && <Ionicons name="chevron-forward" size={18} color={Colors.textLight} />}
+      <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
     </Pressable>
   );
 }
@@ -58,141 +60,140 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Profile Card */}
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={[styles.profileCard, Shadow.sm]}>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={32} color={Colors.primary} />
+        <View style={styles.logoWrap}>
+          <Image source={require('../../../assets/icon.png')} style={styles.logo} />
+          <Pressable style={styles.editLogoBtn} onPress={() => router.push('/settings/branding')}>
+            <Ionicons name="create" size={14} color="#fff" />
+          </Pressable>
         </View>
-        <View>
-          <Text style={styles.profileName}>{user?.name || 'User'}</Text>
-          <Text style={styles.profileRole}>{user?.role === 'OWNER' ? 'Pemilik' : 'Admin'}</Text>
-          <Text style={styles.profileTenant}>{user?.tenantName || ''}</Text>
-        </View>
+        <Text style={styles.profileTenant}>{user?.tenantName || 'Biro Jasa STNK'}</Text>
+        <Text style={styles.profileAddress}>{user?.name || 'User'} • {user?.role === 'OWNER' ? 'Pemilik' : 'Admin'}</Text>
       </View>
 
-      {/* Menu Groups */}
-      <View style={styles.group}>
-        <Text style={styles.groupTitle}>Profil & Akun</Text>
+      <View style={[styles.menuCard, Shadow.sm]}>
         <MenuItem
           icon="person-outline"
           label="Profil Saya"
+          sublabel="Kelola data akun pengguna"
           onPress={() => router.push('/settings/profile')}
         />
         <MenuItem
           icon="image-outline"
           label="Branding Tenant"
-          sublabel="Logo dan informasi bureau"
+          sublabel="Logo dan informasi biro"
           onPress={() => router.push('/settings/branding')}
         />
-      </View>
-
-      <View style={styles.group}>
-        <Text style={styles.groupTitle}>Operasional</Text>
         <MenuItem
           icon="logo-whatsapp"
           label="Template WhatsApp"
-          sublabel="Pesan otomatis ke pelanggan"
+          sublabel="Atur pesan otomatis pelanggan"
           color="#25D366"
           onPress={() => router.push('/settings/whatsapp')}
         />
         <MenuItem
           icon="pricetag-outline"
           label="Aturan Harga"
-          sublabel="Kelola harga layanan"
-          color={Colors.warning}
+          sublabel="Konfigurasi biaya jasa layanan"
+          color={Colors.primary}
           onPress={() => router.push('/settings/pricing')}
         />
         <MenuItem
-          icon="business-outline"
-          label="Cabang"
-          sublabel="Kelola cabang biro jasa"
-          color={Colors.info}
-          onPress={() => router.push('/branches/index')}
-        />
-      </View>
-
-      <View style={styles.group}>
-        <Text style={styles.groupTitle}>Langganan</Text>
-        <MenuItem
           icon="card-outline"
-          label="Status Langganan"
-          sublabel="Lihat info berlangganan"
+          label="Status Berlangganan"
+          sublabel="Aktif dan informasi masa layanan"
           color={Colors.success}
           onPress={() => router.push('/settings/subscription')}
         />
       </View>
 
-      <View style={[styles.group, styles.lastGroup]}>
-        <MenuItem
-          icon="log-out-outline"
-          label="Keluar"
-          onPress={handleLogout}
-          danger
-          color={Colors.danger}
-        />
-      </View>
+      <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={22} color={Colors.danger} />
+        <Text style={styles.logoutText}>Logout</Text>
+      </Pressable>
+
+      <Text style={styles.versionText}>Versi 1.2.0 • Sistem STNK Indonesia</Text>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  content: { padding: Spacing.lg, paddingTop: Spacing['2xl'], paddingBottom: 96 },
   profileCard: {
-    flexDirection: 'row',
     alignItems: 'center',
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.xl,
     backgroundColor: Colors.surface,
-    margin: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    gap: Spacing.md,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    marginBottom: Spacing['2xl'],
   },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.primary + '15',
+  logoWrap: { width: 96, height: 96, marginBottom: Spacing.md },
+  logo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 48,
+    borderWidth: 2,
+    borderColor: Colors.primaryLight,
+  },
+  editLogoBtn: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    borderWidth: 2,
+    borderColor: Colors.surface,
   },
-  profileName: { ...Typography.h4, color: Colors.text },
-  profileRole: { ...Typography.bodySmall, color: Colors.primary, fontWeight: '600' },
-  profileTenant: { ...Typography.bodySmall, color: Colors.textSecondary },
-  group: {
+  profileTenant: { fontSize: 20, lineHeight: 28, fontWeight: '800', color: Colors.text, textAlign: 'center' },
+  profileAddress: { fontSize: 14, lineHeight: 20, color: Colors.textSecondary, textAlign: 'center', marginTop: 4 },
+  menuCard: {
+    borderRadius: BorderRadius.xl,
     backgroundColor: Colors.surface,
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
     overflow: 'hidden',
   },
-  lastGroup: { marginBottom: Spacing.xl },
-  groupTitle: {
-    ...Typography.bodySmall,
-    color: Colors.textSecondary,
-    fontWeight: '600',
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
   menuItem: {
+    minHeight: 74,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.divider,
-    gap: Spacing.md,
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.divider,
   },
+  menuLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   menuIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: BorderRadius.md,
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.primaryLight,
   },
   menuContent: { flex: 1 },
-  menuLabel: { ...Typography.body, color: Colors.text, fontWeight: '500' },
-  menuSublabel: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
-  dangerText: { color: Colors.danger },
+  menuLabel: { fontSize: 15, lineHeight: 22, color: Colors.text, fontWeight: '800' },
+  menuSublabel: { fontSize: 12, lineHeight: 16, color: Colors.textSecondary, marginTop: 2 },
+  logoutBtn: {
+    marginTop: Spacing['2xl'],
+    minHeight: 54,
+    borderRadius: BorderRadius.xl,
+    backgroundColor: Colors.dangerLight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: '#FFD1D1',
+  },
+  logoutText: { fontSize: 15, lineHeight: 22, color: Colors.danger, fontWeight: '800' },
+  versionText: { marginTop: Spacing.md, textAlign: 'center', fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
 });

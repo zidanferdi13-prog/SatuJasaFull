@@ -9,10 +9,14 @@ const getTenantId = (): string => {
 };
 
 export const settingsService = {
-  // Service Types (read-only for tenants)
   getServiceTypes: async (): Promise<ServiceType[]> => {
     const { data } = await apiClient.get<ApiResponse<ServiceType[]>>('/service-types');
     return data.data || [];
+  },
+
+  createServiceType: async (payload: { name: string; description?: string }): Promise<ServiceType> => {
+    const { data } = await apiClient.post<ApiResponse<ServiceType>>('/service-types', payload);
+    return data.data;
   },
 
   // Pricing Rules
@@ -21,12 +25,15 @@ export const settingsService = {
     return data.data || [];
   },
 
-  createPricingRule: async (payload: { serviceTypeId: string; price: number }): Promise<PricingRule> => {
-    const { data } = await apiClient.post<ApiResponse<PricingRule>>('/pricing-rules', payload);
+  createPricingRule: async (payload: { serviceTypeId: string; marginAmount: number }): Promise<PricingRule> => {
+    const { data } = await apiClient.post<ApiResponse<PricingRule>>('/pricing-rules', {
+      ...payload,
+      price: payload.marginAmount,
+    });
     return data.data;
   },
 
-  updatePricingRule: async (id: string, payload: { price: number; isActive?: boolean }): Promise<PricingRule> => {
+  updatePricingRule: async (id: string, payload: { marginAmount: number; isActive?: boolean }): Promise<PricingRule> => {
     const { data } = await apiClient.put<ApiResponse<PricingRule>>(`/pricing-rules/${id}`, payload);
     return data.data;
   },

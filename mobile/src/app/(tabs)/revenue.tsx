@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRevenueSummary } from '@/modules/dashboard/hooks/useDashboard';
-import { useAuthStore } from '@/store/authStore';
 import { Colors, Spacing, Typography, Shadow, BorderRadius } from '@/theme';
 
 function RevenueRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
@@ -48,10 +47,7 @@ function formatRupiah(n: number) {
 }
 
 export default function RevenueScreen() {
-  const selectedBranch = useAuthStore((s) => s.selectedBranch);
-  const { data, isLoading, refetch } = useRevenueSummary({
-    branchId: selectedBranch?.id,
-  });
+  const { data, isLoading, refetch } = useRevenueSummary();
 
   return (
     <ScrollView
@@ -69,7 +65,7 @@ export default function RevenueScreen() {
             <KpiBlock
               icon="cash-outline"
               color={Colors.success}
-              label="Total Revenue"
+              label="Total Pendapatan Jasa"
               value={formatRupiah(data?.totalRevenue ?? 0)}
             />
             <KpiBlock
@@ -92,10 +88,10 @@ export default function RevenueScreen() {
             />
           </View>
 
-          {/* Branch Revenue */}
+          {/* Revenue Breakdown */}
           {data?.branchRevenue && data.branchRevenue.length > 0 && (
             <View style={[styles.card, Shadow.sm]}>
-              <Text style={styles.cardTitle}>Revenue per Cabang</Text>
+              <Text style={styles.cardTitle}>Rincian Pendapatan Jasa</Text>
               {data.branchRevenue.map((b) => (
                 <RevenueRow
                   key={b.branchId}
@@ -109,7 +105,7 @@ export default function RevenueScreen() {
           {/* Monthly Revenue */}
           {data?.monthlyRevenue && data.monthlyRevenue.length > 0 && (
             <View style={[styles.card, Shadow.sm]}>
-              <Text style={styles.cardTitle}>Revenue Bulanan</Text>
+              <Text style={styles.cardTitle}>Pendapatan Jasa Bulanan</Text>
               {data.monthlyRevenue.map((m) => (
                 <RevenueRow key={m.month} label={m.month} value={formatRupiah(m.revenue)} />
               ))}

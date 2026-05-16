@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../../config/prisma';
+import { BranchService } from '../branch/branch.service';
 import { LoginResult } from './auth.types';
 
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'access-secret';
@@ -51,9 +52,16 @@ export class AuthService {
       }
     }
 
-    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    let branchId = user.branchId;
+    if (user.role !== 'SUPER_ADMIN' && !branchId) {
+      const branch = await BranchService.getOrCreateDefault(user.tenantId);
+      branchId = branch.id;
+    }
 
-    const payload = buildPayload(user, user.tenant);
+    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), branchId } });
+
+    const userWithBranch = { ...user, branchId };
+    const payload = buildPayload(userWithBranch, user.tenant);
     const tokens = signTokens(payload);
 
     return {
@@ -66,7 +74,7 @@ export class AuthService {
         tenantId: user.tenantId,
         tenantCode: user.tenant.code,
         tenantName: user.tenant.name,
-        branchId: user.branchId,
+        branchId,
       },
     };
   }
@@ -88,7 +96,15 @@ export class AuthService {
       throw Object.assign(new Error('User not found or inactive'), { statusCode: 401 });
     }
 
-    const payload = buildPayload(user, user.tenant);
+    let branchId = user.branchId;
+    if (user.role !== 'SUPER_ADMIN' && !branchId) {
+      const branch = await BranchService.getOrCreateDefault(user.tenantId);
+      branchId = branch.id;
+      await prisma.user.update({ where: { id: user.id }, data: { branchId } });
+    }
+
+    const userWithBranch = { ...user, branchId };
+    const payload = buildPayload(userWithBranch, user.tenant);
     const tokens = signTokens(payload);
 
     return {
@@ -101,7 +117,7 @@ export class AuthService {
         tenantId: user.tenantId,
         tenantCode: user.tenant.code,
         tenantName: user.tenant.name,
-        branchId: user.branchId,
+        branchId,
       },
     };
   }
@@ -158,6 +174,16 @@ export class AuthService {
         },
       });
 
+      const branch = await tx.branch.create({
+        data: {
+          tenantId: tenant.id,
+          name: tenant.name,
+          address: tenant.address,
+          phone: tenant.phone,
+          isActive: true,
+        },
+      });
+
       const owner = await tx.user.create({
         data: {
           name: data.ownerName,
@@ -165,6 +191,7 @@ export class AuthService {
           passwordHash: hash,
           role: 'OWNER',
           tenantId: tenant.id,
+          branchId: branch.id,
         },
       });
 

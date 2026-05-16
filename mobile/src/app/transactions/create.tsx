@@ -17,20 +17,66 @@ import { useCreateTransaction } from '../../modules/transactions/hooks/useTransa
 import { useCustomers, useCreateCustomer } from '../../modules/customers/hooks/useCustomers';
 import { useVehicles, useCreateVehicle } from '../../modules/vehicles/hooks/useVehicles';
 import { useServiceTypes } from '../../modules/settings/hooks/useSettings';
-import { useAuthStore } from '../../store/authStore';
 import { Customer, Vehicle, ServiceType } from '../../shared/types';
 import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../theme';
 import { getErrorMessage } from '../../shared/services/api-error';
+
+type StnkFeeKey =
+  | 'pkbPokok'
+  | 'pkbDenda'
+  | 'opsenPkbPokok'
+  | 'opsenPkbDenda'
+  | 'swdklljPokok'
+  | 'swdklljDenda'
+  | 'pnbpStnk'
+  | 'pnbpTnkb';
+
+type StnkFeeInputs = Record<StnkFeeKey, string>;
 
 interface TransactionItemInput {
   vehicleId: string;
   vehicle: Vehicle;
   serviceTypeId: string;
   serviceTypeName: string;
+  baseCost: number;
+  serviceFee: number;
   estimatedPrice: string;
+  stnkFees: StnkFeeInputs;
 }
 
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+const STNK_FEE_CATEGORIES: { key: StnkFeeKey; label: string }[] = [
+  { key: 'pkbPokok', label: 'PKB Pokok' },
+  { key: 'pkbDenda', label: 'PKB Denda' },
+  { key: 'opsenPkbPokok', label: 'Opsen PKB Pokok' },
+  { key: 'opsenPkbDenda', label: 'Opsen PKB Denda' },
+  { key: 'swdklljPokok', label: 'SWDKLLJ Pokok' },
+  { key: 'swdklljDenda', label: 'SWDKLLJ Denda' },
+  { key: 'pnbpStnk', label: 'PNBP STNK' },
+  { key: 'pnbpTnkb', label: 'PNBP TNKB' },
+];
+
+const DEFAULT_STNK_FEES: StnkFeeInputs = {
+  pkbPokok: '',
+  pkbDenda: '',
+  opsenPkbPokok: '',
+  opsenPkbDenda: '',
+  swdklljPokok: '',
+  swdklljDenda: '',
+  pnbpStnk: '',
+  pnbpTnkb: '',
+};
+
+const parseMoneyInput = (value: string) => Number(value.replace(/[^\d]/g, '')) || 0;
+
+const calculateStnkFeeTotal = (fees: StnkFeeInputs) =>
+  Object.values(fees).reduce((sum, value) => sum + parseMoneyInput(value), 0);
+
+const getServiceFee = (serviceType: ServiceType | null) => {
+  const rule = serviceType?.pricingRules?.find((pricingRule) => pricingRule.isActive);
+  return Number(rule?.marginAmount || 0);
+};
 
 const dpStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -152,7 +198,6 @@ const STEPS = ['Pelanggan', 'Kendaraan', 'Ringkasan'];
 
 export default function CreateTransactionScreen() {
   const router = useRouter();
-  const { selectedBranch } = useAuthStore();
   const createMutation = useCreateTransaction();
   const createCustomerMutation = useCreateCustomer();
   const createVehicleMutation = useCreateVehicle();
@@ -168,7 +213,7 @@ export default function CreateTransactionScreen() {
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
   const [addingVehicle, setAddingVehicle] = useState<Vehicle | null>(null);
   const [selectedServiceType, setSelectedServiceType] = useState<ServiceType | null>(null);
-  const [vehiclePrice, setVehiclePrice] = useState('');
+  const [vehicleFees, setVehicleFees] = useState<StnkFeeInputs>(DEFAULT_STNK_FEES);
 
   // Inline add customer
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -192,6 +237,16 @@ export default function CreateTransactionScreen() {
   const { data: serviceTypes } = useServiceTypes();
 
   const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const currentVehicleFeeTotal = calculateStnkFeeTotal(vehicleFees);
+  const currentServiceFee = getServiceFee(selectedServiceType);
+  const currentVehicleGrossTotal = currentVehicleFeeTotal + currentServiceFee;
+  const updateVehicleFee = (key: StnkFeeKey, value: string) => {
+    setVehicleFees((fees) => ({ ...fees, [key]: value.replace(/[^\d]/g, '') }));
+  };
+  const getNonZeroFees = (fees: StnkFeeInputs) =>
+    STNK_FEE_CATEGORIES.map((category) => ({ ...category, amount: parseMoneyInput(fees[category.key]) }))
+      .filter((category) => category.amount > 0);
+
   const goBack = () => {
     if (step === 0) router.back();
     else setStep((s) => s - 1);
@@ -199,14 +254,18 @@ export default function CreateTransactionScreen() {
 
   const handleAddItem = () => {
     if (!addingVehicle || !selectedServiceType) return;
-    const price = parseFloat(vehiclePrice) || 0;
+    const baseCost = calculateStnkFeeTotal(vehicleFees);
+    const serviceFee = getServiceFee(selectedServiceType);
     const existing = selectedItems.findIndex((i) => i.vehicleId === addingVehicle.id);
     const newItem: TransactionItemInput = {
       vehicleId: addingVehicle.id,
       vehicle: addingVehicle,
       serviceTypeId: selectedServiceType.id,
       serviceTypeName: selectedServiceType.name,
-      estimatedPrice: String(price),
+      baseCost,
+      serviceFee,
+      estimatedPrice: String(baseCost + serviceFee),
+      stnkFees: vehicleFees,
     };
     if (existing >= 0) {
       const updated = [...selectedItems];
@@ -217,7 +276,7 @@ export default function CreateTransactionScreen() {
     }
     setAddingVehicle(null);
     setSelectedServiceType(null);
-    setVehiclePrice('');
+    setVehicleFees(DEFAULT_STNK_FEES);
     setShowVehiclePicker(false);
   };
 
@@ -271,12 +330,11 @@ export default function CreateTransactionScreen() {
     }
     try {
       const payload = {
-        branchId: selectedBranch?.id,
         customerId: selectedCustomer.id,
         items: selectedItems.map((item) => ({
           vehicleId: item.vehicleId,
           serviceTypeId: item.serviceTypeId,
-          price: parseFloat(item.estimatedPrice) || 0,
+          baseCost: item.baseCost,
         })),
         dpAmount: dpAmount ? parseFloat(dpAmount) : undefined,
         estimatedFinishDate: estimatedDate || undefined,
@@ -289,6 +347,8 @@ export default function CreateTransactionScreen() {
     }
   };
 
+  const totalBaseCost = selectedItems.reduce((sum, item) => sum + item.baseCost, 0);
+  const totalServiceFee = selectedItems.reduce((sum, item) => sum + item.serviceFee, 0);
   const totalEstimate = selectedItems.reduce((sum, i) => sum + (parseFloat(i.estimatedPrice) || 0), 0);
 
   return (
@@ -394,7 +454,8 @@ export default function CreateTransactionScreen() {
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemPlate}>{item.vehicle.plateNumber}</Text>
                   <Text style={styles.itemService}>{item.serviceTypeName}</Text>
-                  <Text style={styles.itemPrice}>Rp {parseFloat(item.estimatedPrice).toLocaleString('id-ID')}</Text>
+                  <Text style={styles.itemPrice}>Total tagihan: Rp {parseFloat(item.estimatedPrice).toLocaleString('id-ID')}</Text>
+                  <Text style={styles.itemMeta}>Jasa biro: Rp {item.serviceFee.toLocaleString('id-ID')}</Text>
                 </View>
                 <Pressable onPress={() => removeItem(item.vehicleId)}>
                   <Ionicons name="trash-outline" size={20} color={Colors.danger} />
@@ -491,28 +552,48 @@ export default function CreateTransactionScreen() {
                       </Pressable>
                     ))}
 
-                    <Text style={[styles.pickerTitle, { marginTop: Spacing.md }]}>Harga Estimasi</Text>
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Masukkan harga..."
-                      value={vehiclePrice}
-                      onChangeText={setVehiclePrice}
-                      keyboardType="numeric"
-                    />
+                    <Text style={[styles.pickerTitle, { marginTop: Spacing.md }]}>Rincian Biaya STNK</Text>
+                    <Text style={styles.feeHelpText}>Isi biaya yang diperlukan, biarkan 0 jika tidak ada.</Text>
+                    {STNK_FEE_CATEGORIES.map((category) => (
+                      <View key={category.key} style={styles.feeRow}>
+                        <Text style={styles.feeLabel}>{category.label}</Text>
+                        <TextInput
+                          style={styles.feeInput}
+                          placeholder="0"
+                          value={vehicleFees[category.key]}
+                          onChangeText={(value) => updateVehicleFee(category.key, value)}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    ))}
+                    <View style={styles.feeBreakdown}>
+                      <View style={styles.feeTotalRowPlain}>
+                        <Text style={styles.feeBreakdownLabel}>Total biaya STNK/modal</Text>
+                        <Text style={styles.feeBreakdownValue}>Rp {currentVehicleFeeTotal.toLocaleString('id-ID')}</Text>
+                      </View>
+                      <View style={styles.feeTotalRowPlain}>
+                        <Text style={styles.feeBreakdownLabel}>Jasa biro</Text>
+                        <Text style={styles.feeBreakdownValue}>Rp {currentServiceFee.toLocaleString('id-ID')}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.feeTotalRow}>
+                      <Text style={styles.feeTotalLabel}>Total tagihan kendaraan</Text>
+                      <Text style={styles.feeTotalValue}>Rp {currentVehicleGrossTotal.toLocaleString('id-ID')}</Text>
+                    </View>
 
                     <View style={styles.pickerActions}>
                       <Pressable style={styles.cancelBtn} onPress={() => {
                         setShowVehiclePicker(false);
                         setAddingVehicle(null);
                         setSelectedServiceType(null);
-                        setVehiclePrice('');
+                        setVehicleFees(DEFAULT_STNK_FEES);
                       }}>
                         <Text style={styles.cancelBtnText}>Batal</Text>
                       </Pressable>
                       <Pressable
-                        style={[styles.confirmBtn, (!addingVehicle || !selectedServiceType) && styles.btnDisabled]}
+                        style={[styles.confirmBtn, (!addingVehicle || !selectedServiceType || currentVehicleFeeTotal <= 0) && styles.btnDisabled]}
                         onPress={handleAddItem}
-                        disabled={!addingVehicle || !selectedServiceType}
+                        disabled={!addingVehicle || !selectedServiceType || currentVehicleFeeTotal <= 0}
                       >
                         <Text style={styles.confirmBtnText}>Tambahkan</Text>
                       </Pressable>
@@ -524,7 +605,11 @@ export default function CreateTransactionScreen() {
 
             {selectedItems.length > 0 && (
               <View style={[styles.totalCard, Shadow.sm]}>
-                <Text style={styles.totalLabel}>Estimasi Total</Text>
+                <View>
+                  <Text style={styles.totalLabel}>Estimasi Total Tagihan</Text>
+                  <Text style={styles.totalMeta}>Modal: Rp {totalBaseCost.toLocaleString('id-ID')}</Text>
+                  <Text style={styles.totalMeta}>Jasa biro: Rp {totalServiceFee.toLocaleString('id-ID')}</Text>
+                </View>
                 <Text style={styles.totalValue}>Rp {totalEstimate.toLocaleString('id-ID')}</Text>
               </View>
             )}
@@ -545,8 +630,15 @@ export default function CreateTransactionScreen() {
               <Text style={styles.sectionTitle}>{selectedItems.length} Kendaraan</Text>
               {selectedItems.map((item) => (
                 <View key={item.vehicleId} style={styles.summaryItem}>
-                  <Text style={styles.summaryPlate}>{item.vehicle.plateNumber}</Text>
-                  <Text style={styles.summaryService}>{item.serviceTypeName}</Text>
+                  <View style={styles.summaryMain}>
+                    <Text style={styles.summaryPlate}>{item.vehicle.plateNumber}</Text>
+                    <Text style={styles.summaryService}>{item.serviceTypeName}</Text>
+                    {getNonZeroFees(item.stnkFees).map((fee) => (
+                      <Text key={fee.key} style={styles.summaryFee}>
+                        {fee.label}: Rp {fee.amount.toLocaleString('id-ID')}
+                      </Text>
+                    ))}
+                  </View>
                   <Text style={styles.summaryPrice}>Rp {parseFloat(item.estimatedPrice).toLocaleString('id-ID')}</Text>
                 </View>
               ))}
@@ -700,6 +792,7 @@ const styles = StyleSheet.create({
   itemPlate: { ...Typography.body, fontWeight: '700', color: Colors.text },
   itemService: { ...Typography.bodySmall, color: Colors.textSecondary },
   itemPrice: { ...Typography.caption, color: Colors.primary, fontWeight: '600' },
+  itemMeta: { ...Typography.caption, color: Colors.textSecondary },
   addItemBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -720,6 +813,41 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   pickerTitle: { ...Typography.h4, color: Colors.text, marginBottom: Spacing.sm },
+  feeHelpText: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.sm },
+  feeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  feeLabel: { ...Typography.bodySmall, color: Colors.text, flex: 1, fontWeight: '500' },
+  feeInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.text,
+    backgroundColor: Colors.surface,
+    width: 130,
+    textAlign: 'right',
+  },
+  feeTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.primary + '12',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.xs,
+  },
+  feeTotalLabel: { ...Typography.bodySmall, color: Colors.primary, fontWeight: '700' },
+  feeTotalValue: { ...Typography.body, color: Colors.primary, fontWeight: '700' },
+  feeBreakdown: { gap: 4, marginTop: Spacing.xs },
+  feeTotalRowPlain: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  feeBreakdownLabel: { ...Typography.bodySmall, color: Colors.textSecondary },
+  feeBreakdownValue: { ...Typography.bodySmall, color: Colors.text, fontWeight: '600' },
   pickerActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.md },
   cancelBtn: {
     flex: 1,
@@ -747,6 +875,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   totalLabel: { ...Typography.body, color: Colors.primary, fontWeight: '600' },
+  totalMeta: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
   totalValue: { ...Typography.h3, color: Colors.primary },
   card: {
     backgroundColor: Colors.surface,
@@ -759,14 +888,16 @@ const styles = StyleSheet.create({
   cardSub: { ...Typography.bodySmall, color: Colors.textSecondary },
   summaryItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
   },
-  summaryPlate: { ...Typography.body, fontWeight: '700', color: Colors.text, width: 90 },
-  summaryService: { ...Typography.bodySmall, color: Colors.textSecondary, flex: 1 },
+  summaryMain: { flex: 1 },
+  summaryPlate: { ...Typography.body, fontWeight: '700', color: Colors.text },
+  summaryService: { ...Typography.bodySmall, color: Colors.textSecondary },
+  summaryFee: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
   summaryPrice: { ...Typography.bodySmall, color: Colors.primary, fontWeight: '600' },
   label: { ...Typography.bodySmall, color: Colors.textSecondary, marginBottom: Spacing.xs, fontWeight: '500' },
   bottomNav: {

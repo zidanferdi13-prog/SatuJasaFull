@@ -18,7 +18,8 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
 }
 
 export default function VehicleDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const id = String(params.id ?? '');
   const router = useRouter();
   const { data: vehicle, isLoading } = useVehicle(id);
 

@@ -13,7 +13,7 @@ const router = Router();
 router.use(authMiddleware, subscriptionMiddleware);
 
 router.get('/', ServiceTypeController.list);
-router.post('/', roleMiddleware('SUPER_ADMIN'), validate(createServiceTypeSchema), ServiceTypeController.create);
+router.post('/', roleMiddleware('OWNER', 'ADMIN', 'SUPER_ADMIN'), validate(createServiceTypeSchema), ServiceTypeController.create);
 router.put('/:id', roleMiddleware('SUPER_ADMIN'), validate(updateServiceTypeSchema), ServiceTypeController.update);
 router.patch('/:id/status', roleMiddleware('SUPER_ADMIN'), validate(updateServiceTypeStatusSchema), ServiceTypeController.updateStatus);
 

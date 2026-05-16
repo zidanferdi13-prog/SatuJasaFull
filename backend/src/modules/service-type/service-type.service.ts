@@ -18,9 +18,8 @@ export class ServiceTypeService {
     });
   }
 
-  static async create(data: { name: string; description?: string }) {
-    // Only SUPER_ADMIN creates global service types (tenantId = null)
-    return prisma.serviceType.create({ data: { ...data, tenantId: null } });
+  static async create(tenantId: string | null, data: { name: string; description?: string }) {
+    return prisma.serviceType.create({ data: { ...data, tenantId } });
   }
 
   static async update(id: string, data: { name?: string; description?: string }) {

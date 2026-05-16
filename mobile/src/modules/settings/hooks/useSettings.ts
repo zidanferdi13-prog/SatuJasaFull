@@ -17,10 +17,18 @@ export function usePricingRules() {
   });
 }
 
+export function useCreateServiceType() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name: string; description?: string }) => settingsService.createServiceType(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-types'] }),
+  });
+}
+
 export function useCreatePricingRule() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { serviceTypeId: string; price: number }) =>
+    mutationFn: (payload: { serviceTypeId: string; marginAmount: number }) =>
       settingsService.createPricingRule(payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['pricing-rules'] }),
   });
@@ -29,7 +37,7 @@ export function useCreatePricingRule() {
 export function useUpdatePricingRule(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { price: number; isActive?: boolean }) =>
+    mutationFn: (payload: { marginAmount: number; isActive?: boolean }) =>
       settingsService.updatePricingRule(id, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['pricing-rules'] }),
   });

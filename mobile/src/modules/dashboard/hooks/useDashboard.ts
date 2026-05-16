@@ -1,16 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '../services/dashboard.service';
-import { useAuthStore } from '../../../store/authStore';
 
 export function useDashboardKpis() {
-  const selectedBranch = useAuthStore((s) => s.selectedBranch);
-
   return useQuery({
-    queryKey: ['dashboard-kpis', selectedBranch?.id],
-    queryFn: () =>
-      selectedBranch
-        ? dashboardService.getBranchDashboard(selectedBranch.id)
-        : dashboardService.getTenantDashboard(),
+    queryKey: ['dashboard-kpis'],
+    queryFn: () => dashboardService.getTenantDashboard(),
     refetchInterval: 30_000,
   });
 }

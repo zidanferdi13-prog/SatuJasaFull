@@ -13,11 +13,11 @@ export class DashboardService {
       await Promise.all([
         prisma.transaction.aggregate({
           where: { ...filter, status: 'CLOSED', updatedAt: { gte: today } },
-          _sum: { finalTotal: true },
+          _sum: { serviceFeeTotal: true },
         }),
         prisma.transaction.aggregate({
           where: { ...filter, status: 'CLOSED', updatedAt: { gte: monthStart } },
-          _sum: { finalTotal: true },
+          _sum: { serviceFeeTotal: true },
         }),
         prisma.transaction.aggregate({
           where: { ...filter, refundAmount: { gt: 0 } },
@@ -38,8 +38,8 @@ export class DashboardService {
       ]);
 
     return {
-      revenueToday: Number(revenueToday._sum.finalTotal || 0),
-      monthlyRevenue: Number(monthlyRevenue._sum.finalTotal || 0),
+      revenueToday: Number(revenueToday._sum.serviceFeeTotal || 0),
+      monthlyRevenue: Number(monthlyRevenue._sum.serviceFeeTotal || 0),
       totalRefund: Number(totalRefund._sum.refundAmount || 0),
       activeTransactions: activeTrx,
       readyPickupCount: readyPickup,
@@ -66,7 +66,7 @@ export class DashboardService {
         prisma.transaction.count(),
         prisma.transaction.aggregate({
           where: { status: 'CLOSED', updatedAt: { gte: monthStart } },
-          _sum: { finalTotal: true },
+          _sum: { serviceFeeTotal: true },
         }),
         prisma.whatsappQueue.count({ where: { status: 'PENDING' } }),
       ]);
@@ -76,7 +76,7 @@ export class DashboardService {
       activeTenants,
       expiredSubscriptions,
       totalTransactions,
-      platformMonthlyRevenue: Number(monthRevenue._sum.finalTotal || 0),
+      platformMonthlyRevenue: Number(monthRevenue._sum.serviceFeeTotal || 0),
       whatsappQueuePending: queuePending,
     };
   }

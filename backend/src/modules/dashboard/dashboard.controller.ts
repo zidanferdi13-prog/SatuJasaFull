@@ -5,7 +5,7 @@ import { sendSuccess } from '../../shared/utils/response';
 export class DashboardController {
   static async getTenantDashboard(req: Request, res: Response, next: NextFunction) {
     try {
-      const stats = await DashboardService.getTenantKpis(req.user!.tenant_id, req.user!.branch_id);
+      const stats = await DashboardService.getTenantKpis(req.user!.tenant_id);
       return sendSuccess(res, stats);
     } catch (err) { next(err); }
   }

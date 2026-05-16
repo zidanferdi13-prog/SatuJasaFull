@@ -199,6 +199,8 @@ model Transaction {
   status              TransactionStatus @default(DRAFT)
   estimatedTotal      Decimal           @db.Decimal(15, 2) @default(0)
   finalTotal          Decimal           @db.Decimal(15, 2) @default(0)
+  baseCostTotal       Decimal           @db.Decimal(15, 2) @default(0)
+  serviceFeeTotal     Decimal           @db.Decimal(15, 2) @default(0)
   dpAmount            Decimal           @db.Decimal(15, 2) @default(0)
   remainingAmount     Decimal           @db.Decimal(15, 2) @default(0)
   refundAmount        Decimal           @db.Decimal(15, 2) @default(0)
@@ -230,6 +232,8 @@ model TransactionItem {
   vehicleId     String
   serviceTypeId String
   price         Decimal  @db.Decimal(15, 2)
+  baseCost      Decimal  @db.Decimal(15, 2) @default(0)
+  serviceFee    Decimal  @db.Decimal(15, 2) @default(0)
   createdAt     DateTime @default(now())
 
   transaction Transaction @relation(fields: [transactionId], references: [id])

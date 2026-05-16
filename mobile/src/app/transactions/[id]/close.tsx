@@ -19,7 +19,8 @@ import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../../them
 import { getErrorMessage } from '../../../shared/services/api-error';
 
 export default function CloseTransactionScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const id = String(params.id ?? '');
   const router = useRouter();
   const { data: transaction, isLoading } = useTransaction(id);
   const closeMutation = useCloseTransaction(id);

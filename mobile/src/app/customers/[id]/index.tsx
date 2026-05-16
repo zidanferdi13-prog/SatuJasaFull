@@ -13,7 +13,8 @@ import { useCustomer } from '../../../modules/customers/hooks/useCustomers';
 import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../../theme';
 
 export default function CustomerDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const id = String(params.id ?? '');
   const router = useRouter();
   const { data: customer, isLoading } = useCustomer(id);
 

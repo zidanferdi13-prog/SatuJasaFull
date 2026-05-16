@@ -3,6 +3,7 @@ import { getPagination } from '../../shared/utils/pagination';
 import { generateInvoiceNumber, generateTrackingCode } from '../../shared/utils/invoice';
 import { STATUS_TRANSITIONS } from '../../shared/constants';
 import { enqueueWhatsApp } from '../../shared/services/whatsapp.service';
+import { BranchService } from '../branch/branch.service';
 
 const TX_INCLUDE = {
   customer: { select: { id: true, name: true, phone: true } },
@@ -18,6 +19,43 @@ const TX_INCLUDE = {
 };
 
 export class TransactionService {
+  private static async resolveBranch(tenantId: string, branchId?: string) {
+    if (branchId) {
+      const branch = await prisma.branch.findFirst({ where: { id: branchId, tenantId, isActive: true } });
+      if (branch) return branch;
+    }
+
+    return BranchService.getOrCreateDefault(tenantId);
+  }
+
+  private static async buildTransactionItems(tenantId: string, items: any[]) {
+    return Promise.all(items.map(async (item) => {
+      const pricingRule = await prisma.pricingRule.findFirst({
+        where: {
+          tenantId,
+          serviceTypeId: item.serviceTypeId,
+          isActive: true,
+        },
+      });
+
+      if (!pricingRule) {
+        throw Object.assign(new Error('Pricing rule not configured for selected service type'), { statusCode: 422 });
+      }
+
+      const baseCost = Number(item.baseCost ?? item.price ?? 0);
+      const serviceFee = Number(pricingRule.marginAmount || 0);
+      const price = baseCost + serviceFee;
+
+      return {
+        vehicleId: item.vehicleId,
+        serviceTypeId: item.serviceTypeId,
+        price,
+        baseCost,
+        serviceFee,
+      };
+    }));
+  }
+
   static async list(tenantId: string, query: any) {
     const { page, limit, skip } = getPagination(query.page, query.limit);
     const where: any = { tenantId };
@@ -70,16 +108,17 @@ export class TransactionService {
     const invoiceNumber = await generateInvoiceNumber(tenantId, tenant.code);
     const trackingCode = generateTrackingCode(tenant.code);
 
-    const effectiveBranchId = data.branchId || branchId;
-    if (!effectiveBranchId) {
-      throw Object.assign(new Error('Branch ID required'), { statusCode: 400 });
-    }
+    const branch = await TransactionService.resolveBranch(tenantId, data.branchId || branchId);
+    const items = await TransactionService.buildTransactionItems(tenantId, data.items);
+    const baseCostTotal = items.reduce((sum, item) => sum + item.baseCost, 0);
+    const serviceFeeTotal = items.reduce((sum, item) => sum + item.serviceFee, 0);
+    const total = items.reduce((sum, item) => sum + item.price, 0);
 
     const tx = await prisma.$transaction(async (prismaT) => {
       const transaction = await prismaT.transaction.create({
         data: {
           tenantId,
-          branchId: effectiveBranchId,
+          branchId: branch.id,
           customerId: data.customerId,
           invoiceNumber,
           trackingCode,
@@ -88,22 +127,19 @@ export class TransactionService {
           estimatedFinishDate: data.estimatedFinishDate ? new Date(data.estimatedFinishDate) : null,
           notes: data.notes,
           items: {
-            create: data.items.map((item: any) => ({
-              vehicleId: item.vehicleId,
-              serviceTypeId: item.serviceTypeId,
-              price: item.price,
-            })),
+            create: items,
           },
         },
         include: TX_INCLUDE,
       });
 
-      const total = transaction.items.reduce((sum: number, i: any) => sum + Number(i.price), 0);
       const updated = await prismaT.transaction.update({
         where: { id: transaction.id },
         data: {
           estimatedTotal: total,
           finalTotal: total,
+          baseCostTotal,
+          serviceFeeTotal,
           remainingAmount: total - Number(data.dpAmount || 0),
         },
         include: TX_INCLUDE,

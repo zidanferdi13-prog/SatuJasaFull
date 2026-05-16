@@ -29,7 +29,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function EditCustomerScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const id = String(params.id ?? '');
   const router = useRouter();
   const { data: customer } = useCustomer(id);
   const updateMutation = useUpdateCustomer(id);

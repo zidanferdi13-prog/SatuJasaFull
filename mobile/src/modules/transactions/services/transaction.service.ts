@@ -9,8 +9,7 @@ export interface TransactionListResult {
 export interface CreateTransactionPayload {
   customerId: string;
   branchId?: string;
-  /** API field name: price (not estimatedPrice) per POST /transactions contract */
-  items: { vehicleId: string; serviceTypeId: string; price: number }[];
+  items: { vehicleId: string; serviceTypeId: string; baseCost: number }[];
   dpAmount?: number;
   estimatedFinishDate?: string;
   notes?: string;

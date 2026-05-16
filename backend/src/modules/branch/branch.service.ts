@@ -31,6 +31,26 @@ export class BranchService {
     return prisma.branch.create({ data: { ...data, tenantId } });
   }
 
+  static async getOrCreateDefault(tenantId: string) {
+    const existing = await prisma.branch.findFirst({
+      where: { tenantId, isActive: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (existing) return existing;
+
+    const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+    return prisma.branch.create({
+      data: {
+        tenantId,
+        name: tenant.name || 'Utama',
+        address: tenant.address,
+        phone: tenant.phone,
+        isActive: true,
+      },
+    });
+  }
+
   static async update(id: string, tenantId: string, data: any) {
     await this.findById(id, tenantId);
     return prisma.branch.update({ where: { id }, data });

@@ -1,8 +1,8 @@
-# Mobile App - STNK Bureau Service Management SaaS
+# Mobile App - STNK SatuJasa Service Management SaaS
 
-React Native + TypeScript mobile application for STNK Bureau Service Management SaaS Platform.
+React Native + TypeScript mobile application for STNK SatuJasa Service Management SaaS Platform.
 
-This mobile app is used by tenant users, mainly bureau owners/admins, to manage daily STNK bureau operations quickly and simply.
+This mobile app is used by tenant users, mainly SatuJasa owners/admins, to manage daily STNK SatuJasa operations quickly and simply.
 
 ---
 
@@ -14,7 +14,7 @@ This mobile application is part of a 3-system SaaS ecosystem:
 2. Web Admin Dashboard - Platform Owner / Super Admin Control
 3. Backend API - Express + PostgreSQL + Redis + Queue Services
 
-The mobile app is designed for Indonesian STNK bureau service operations.
+The mobile app is designed for Indonesian STNK SatuJasa service operations.
 
 Main use cases:
 
@@ -37,10 +37,10 @@ Main use cases:
 
 Target users:
 
-* Small STNK bureau services
-* Medium/large STNK bureau services
-* Bureau owners
-* Bureau operational admins
+* Small STNK SatuJasa services
+* Medium/large STNK SatuJasa services
+* SatuJasa owners
+* SatuJasa operational admins
 
 The mobile app must prioritize:
 
@@ -511,7 +511,7 @@ Base URL from environment:
 
 ```env
 API_URL=http://localhost:3000/api/v1
-APP_NAME=STNK Bureau Mobile
+APP_NAME=STNK SatuJasa Mobile
 ```
 
 Use centralized Axios instance:
@@ -832,7 +832,7 @@ Public customer tracking remains active but is not handled inside mobile app.
 
 ```env
 API_URL=http://localhost:3000/api/v1
-APP_NAME=STNK Bureau Mobile
+APP_NAME=STNK SatuJasa Mobile
 TRACKING_URL=http://localhost:3001/tracking
 ```
 
@@ -904,7 +904,7 @@ This mobile app must be:
 * fast
 * simple
 * production-ready
-* easy for bureau users
+* easy for SatuJasa users
 * integrated with backend API
 * compatible with multi-tenant SaaS architecture
 * ready for Android deployment
@@ -918,11 +918,11 @@ Use this prompt in Claude Code or any coding agent with access to the mobile pro
 ```text
 You are a Senior React Native Engineer, Mobile System Architect, and TypeScript Engineer.
 
-Your task is to initialize and build the Mobile App for the STNK Bureau Service Management SaaS Platform.
+Your task is to initialize and build the Mobile App for the STNK SatuJasa Service Management SaaS Platform.
 
 Before writing code, read the mobile README.md and understand the full architecture.
 
-The mobile app is the tenant operational app used by Indonesian STNK bureau service owners/admins.
+The mobile app is the tenant operational app used by Indonesian STNK SatuJasa service owners/admins.
 
 The app must connect to an existing backend API built with Node.js + Express + PostgreSQL.
 

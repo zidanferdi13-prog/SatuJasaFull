@@ -10,15 +10,21 @@ export class PricingService {
   }
 
   static async create(tenantId: string, data: { serviceTypeId: string; price: number; marginAmount?: number }) {
+    const price = data.marginAmount ?? data.price;
+
     return prisma.pricingRule.create({
-      data: { tenantId, ...data },
+      data: { tenantId, ...data, price, marginAmount: price },
       include: { serviceType: true },
     });
   }
 
-  static async update(id: string, tenantId: string, data: any) {
+  static async update(id: string, tenantId: string, data: { price?: number; marginAmount?: number; isActive?: boolean }) {
     const rule = await prisma.pricingRule.findFirst({ where: { id, tenantId } });
     if (!rule) throw Object.assign(new Error('Pricing rule not found'), { statusCode: 404 });
-    return prisma.pricingRule.update({ where: { id }, data });
+
+    const price = data.marginAmount ?? data.price;
+    const payload = price === undefined ? data : { ...data, price, marginAmount: price };
+
+    return prisma.pricingRule.update({ where: { id }, data: payload });
   }
 }

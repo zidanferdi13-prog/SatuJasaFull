@@ -7,7 +7,7 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
-  Share,
+  Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -71,8 +71,21 @@ function PaymentRow({ payment }: { payment: Payment }) {
   );
 }
 
+function formatRupiah(amount: number) {
+  return `Rp ${amount.toLocaleString('id-ID')}`;
+}
+
+function formatWhatsAppPhone(phone?: string) {
+  const digits = phone?.replace(/\D/g, '') || '';
+  if (!digits) return '';
+  if (digits.startsWith('62')) return digits;
+  if (digits.startsWith('0')) return `62${digits.slice(1)}`;
+  return digits;
+}
+
 export default function TransactionDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const id = String(params.id ?? '');
   const router = useRouter();
   const { data: transaction, isLoading } = useTransaction(id);
   const { data: payments } = useTransactionPayments(id);
@@ -90,11 +103,52 @@ export default function TransactionDetailScreen() {
   const canClose = transaction.status === 'COMPLETED';
 
   const handleShareTracking = async () => {
+    const phone = formatWhatsAppPhone(transaction.customer?.phone);
+    if (!phone) {
+      Alert.alert('Nomor WhatsApp tidak tersedia', 'Nomor HP pelanggan belum tersedia di data transaksi.');
+      return;
+    }
+
     const link = `${TRACKING_URL}/${transaction.trackingCode}`;
-    await Share.share({
-      message: `Lacak STNK kendaraan Anda:\n${link}\n\nKode: ${transaction.trackingCode}`,
-      url: link,
-    });
+    const items = transaction.items?.map((item, index) => {
+      const vehicle = item.vehicle?.plateNumber || '-';
+      const service = item.serviceType?.name || '-';
+      const amount = item.finalPrice ?? item.price ?? item.estimatedPrice ?? 0;
+      return `${index + 1}. ${vehicle} - ${service}: ${formatRupiah(amount)}`;
+    }).join('\n') || '-';
+    const total = transaction.finalTotal ?? transaction.estimatedTotal ?? 0;
+    const remaining = transaction.remainingAmount ?? 0;
+    const estimatedFinish = transaction.estimatedFinishDate
+      ? new Date(transaction.estimatedFinishDate).toLocaleDateString('id-ID', {
+        day: '2-digit', month: 'long', year: 'numeric',
+      })
+      : '-';
+    const message = [
+      `Halo ${transaction.customer?.name || 'Bapak/Ibu'}, berikut invoice transaksi STNK Anda.`,
+      '',
+      `Invoice: ${transaction.invoiceNumber}`,
+      `Kode Tracking: ${transaction.trackingCode}`,
+      `Status: ${STATUS_LABELS[transaction.status]}`,
+      `Estimasi Selesai: ${estimatedFinish}`,
+      '',
+      'Rincian:',
+      items,
+      '',
+      `Total Tagihan: ${formatRupiah(total)}`,
+      `DP: ${formatRupiah(transaction.dpAmount || 0)}`,
+      `Sisa Bayar: ${formatRupiah(remaining)}`,
+      '',
+      `Link tracking: ${link}`,
+    ].join('\n');
+    const url = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
+    const fallbackUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      await Linking.openURL(canOpen ? url : fallbackUrl);
+    } catch {
+      Alert.alert('Gagal membuka WhatsApp', 'Pastikan WhatsApp sudah terpasang di perangkat.');
+    }
   };
 
   return (
