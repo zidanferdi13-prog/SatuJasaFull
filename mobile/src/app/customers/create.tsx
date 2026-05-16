@@ -16,7 +16,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateCustomer } from '../../modules/customers/hooks/useCustomers';
-import { Colors, Spacing, Typography, BorderRadius } from '../../theme';
+import { Colors, Spacing, Shadow, BorderRadius } from '../../theme';
 import { getErrorMessage } from '../../shared/services/api-error';
 
 const schema = z.object({
@@ -61,6 +61,18 @@ export default function CreateCustomerScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={[styles.heroCard, Shadow.sm]}>
+          <View style={styles.heroIcon}>
+            <Text style={styles.heroInitial}>+</Text>
+          </View>
+          <View style={styles.heroText}>
+            <Text style={styles.eyebrow}>Customer Intake</Text>
+            <Text style={styles.pageTitle}>Pelanggan Baru</Text>
+            <Text style={styles.pageSubtitle}>Simpan kontak pemilik agar transaksi berikutnya lebih cepat.</Text>
+          </View>
+        </View>
+
+        <View style={[styles.formCard, Shadow.sm]}>
         <FormField label="Nama Lengkap *" error={errors.name?.message}>
           <Controller
             control={control}
@@ -138,6 +150,7 @@ export default function CreateCustomerScreen() {
             <Text style={styles.submitBtnText}>Simpan Pelanggan</Text>
           )}
         </Pressable>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -163,29 +176,22 @@ function FormField({
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: Colors.background },
-  container: { padding: Spacing.lg, gap: Spacing.xs },
+  container: { padding: Spacing.lg, paddingTop: Spacing['2xl'], paddingBottom: 96, gap: Spacing.md },
+  heroCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, borderWidth: 1, borderColor: '#C3C6D6' },
+  heroIcon: { width: 58, height: 58, borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryLight },
+  heroInitial: { fontSize: 28, lineHeight: 32, fontWeight: '900', color: Colors.primaryDark },
+  heroText: { flex: 1 },
+  eyebrow: { fontSize: 11, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase', color: Colors.primaryDark, marginBottom: 3 },
+  pageTitle: { fontSize: 26, lineHeight: 32, fontWeight: '900', color: Colors.text, letterSpacing: -0.6 },
+  pageSubtitle: { fontSize: 13, lineHeight: 19, color: Colors.textSecondary, marginTop: 3 },
+  formCard: { backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, borderWidth: 1, borderColor: '#C3C6D6' },
   field: { marginBottom: Spacing.md },
-  label: { ...Typography.bodySmall, color: Colors.textSecondary, marginBottom: Spacing.xs, fontWeight: '500' },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: Colors.text,
-    backgroundColor: Colors.surface,
-  },
+  label: { fontSize: 12, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase', color: Colors.textSecondary, marginBottom: Spacing.xs },
+  input: { borderWidth: 1, borderColor: '#C3C6D6', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing.md, paddingVertical: 13, fontSize: 15, color: Colors.text, backgroundColor: Colors.surface },
   inputError: { borderColor: Colors.danger },
-  textarea: { height: 80, textAlignVertical: 'top' },
-  errorText: { ...Typography.caption, color: Colors.danger, marginTop: 4 },
-  submitBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: Spacing.md,
-  },
+  textarea: { height: 90, textAlignVertical: 'top' },
+  errorText: { fontSize: 11, color: Colors.danger, marginTop: 4, fontWeight: '700' },
+  submitBtn: { backgroundColor: Colors.primaryDark, borderRadius: BorderRadius.lg, paddingVertical: 16, alignItems: 'center', marginTop: Spacing.sm },
   btnDisabled: { opacity: 0.6 },
-  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
 });

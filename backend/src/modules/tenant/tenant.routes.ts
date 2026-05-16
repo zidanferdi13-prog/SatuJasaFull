@@ -20,7 +20,9 @@ const upload = multer({
 
 const router = Router();
 
-// All tenant routes require SUPER_ADMIN
+router.get('/me', authMiddleware, roleMiddleware('OWNER', 'ADMIN'), TenantController.getMe);
+
+// All tenant management routes require SUPER_ADMIN
 router.use(authMiddleware, roleMiddleware('SUPER_ADMIN'));
 
 router.get('/', TenantController.list);

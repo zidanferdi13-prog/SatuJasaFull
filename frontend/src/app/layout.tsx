@@ -3,8 +3,8 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'STNK Bureau Admin',
-  description: 'Service Management System for STNK Bureau',
+  title: 'SatuJasa Admin',
+  description: 'Service Management System for SatuJasa',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

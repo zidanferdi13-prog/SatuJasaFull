@@ -12,6 +12,9 @@ export function useTransactions(params?: {
   branchId?: string;
   startDate?: string;
   endDate?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
 }) {
   return useQuery({
     queryKey: ['transactions', params],

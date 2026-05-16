@@ -1,7 +1,7 @@
 {
   "name": "stnk-bureau-frontend",
   "version": "1.0.0",
-  "description": "STNK Bureau Service Management System - Admin Web Dashboard",
+  "description": "SatuJasa Service Management System - Admin Web Dashboard",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

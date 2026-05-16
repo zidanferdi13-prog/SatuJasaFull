@@ -48,6 +48,29 @@ export class TenantService {
     return tenant;
   }
 
+  static async findOwnTenant(id: string) {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        logoUrl: true,
+        phone: true,
+        address: true,
+        subscriptionStart: true,
+        subscriptionEnd: true,
+        subscriptionStatus: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        subscriptions: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+    if (!tenant) throw Object.assign(new Error('Tenant not found'), { statusCode: 404 });
+    return tenant;
+  }
+
   static async update(id: string, data: { name?: string; phone?: string; address?: string }) {
     const tenant = await prisma.tenant.findUnique({ where: { id } });
     if (!tenant) throw Object.assign(new Error('Tenant not found'), { statusCode: 404 });

@@ -40,6 +40,15 @@ export interface Tenant {
   subscriptionStatus: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
   /** Legacy alias kept for backward compat — prefer subscriptionStatus */
   status?: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
+  isActive?: boolean;
+  subscriptions?: Array<{
+    id: string;
+    planName: string;
+    startDate: string;
+    endDate: string;
+    price: number;
+    status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
+  }>;
   createdAt: string;
   updatedAt: string;
 }

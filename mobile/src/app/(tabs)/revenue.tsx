@@ -9,12 +9,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRevenueSummary } from '@/modules/dashboard/hooks/useDashboard';
-import { Colors, Spacing, Typography, Shadow, BorderRadius } from '@/theme';
+import { Colors, Spacing, Shadow, BorderRadius } from '@/theme';
 
 function RevenueRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <View style={styles.row}>
-      <Text style={[styles.rowLabel, bold && styles.bold]}>{label}</Text>
+      <View style={styles.rowDot} />
+      <Text style={[styles.rowLabel, bold && styles.bold]} numberOfLines={1}>{label}</Text>
       <Text style={[styles.rowValue, bold && styles.bold]}>{value}</Text>
     </View>
   );
@@ -36,8 +37,8 @@ function KpiBlock({
       <View style={[styles.kpiIcon, { backgroundColor: color + '20' }]}>
         <Ionicons name={icon} size={22} color={color} />
       </View>
-      <Text style={styles.kpiValue}>{value}</Text>
       <Text style={styles.kpiLabel}>{label}</Text>
+      <Text style={styles.kpiValue}>{value}</Text>
     </View>
   );
 }
@@ -52,15 +53,27 @@ export default function RevenueScreen() {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => refetch()} />}
     >
+      <View style={styles.heroCard}>
+        <View>
+          <Text style={styles.eyebrow}>Revenue Center</Text>
+          <Text style={styles.heroTitle}>Pendapatan Jasa</Text>
+          <Text style={styles.heroSubtitle}>Pantau margin, DP, refund, dan performa transaksi biro.</Text>
+        </View>
+        <View style={styles.heroIcon}>
+          <Ionicons name="analytics-outline" size={26} color={Colors.primaryDark} />
+        </View>
+      </View>
+
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+        <View style={styles.centerCard}>
+          <ActivityIndicator size="large" color={Colors.primaryDark} />
+          <Text style={styles.centerText}>Memuat revenue...</Text>
         </View>
       ) : (
         <>
-          {/* Top KPIs */}
           <View style={styles.grid}>
             <KpiBlock
               icon="cash-outline"
@@ -91,7 +104,10 @@ export default function RevenueScreen() {
           {/* Revenue Breakdown */}
           {data?.branchRevenue && data.branchRevenue.length > 0 && (
             <View style={[styles.card, Shadow.sm]}>
-              <Text style={styles.cardTitle}>Rincian Pendapatan Jasa</Text>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Rincian Pendapatan Jasa</Text>
+                <Ionicons name="business-outline" size={20} color={Colors.primaryDark} />
+              </View>
               {data.branchRevenue.map((b) => (
                 <RevenueRow
                   key={b.branchId}
@@ -105,7 +121,10 @@ export default function RevenueScreen() {
           {/* Monthly Revenue */}
           {data?.monthlyRevenue && data.monthlyRevenue.length > 0 && (
             <View style={[styles.card, Shadow.sm]}>
-              <Text style={styles.cardTitle}>Pendapatan Jasa Bulanan</Text>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Pendapatan Jasa Bulanan</Text>
+                <Ionicons name="calendar-outline" size={20} color={Colors.primaryDark} />
+              </View>
               {data.monthlyRevenue.map((m) => (
                 <RevenueRow key={m.month} label={m.month} value={formatRupiah(m.revenue)} />
               ))}
@@ -113,9 +132,10 @@ export default function RevenueScreen() {
           )}
 
           {!data && (
-            <View style={styles.center}>
+            <View style={styles.centerCard}>
               <Ionicons name="stats-chart-outline" size={48} color={Colors.textLight} />
-              <Text style={styles.emptyText}>Belum ada data revenue</Text>
+              <Text style={styles.emptyTitle}>Belum ada data revenue</Text>
+              <Text style={styles.centerText}>Transaksi yang ditutup akan masuk ke ringkasan ini.</Text>
             </View>
           )}
         </>
@@ -126,50 +146,81 @@ export default function RevenueScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  grid: {
+  content: { padding: Spacing.lg, paddingTop: Spacing['2xl'], paddingBottom: 104, gap: Spacing.md },
+  heroCard: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  kpiBlock: {
-    width: '47%',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    ...Shadow.sm,
   },
-  kpiIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.md,
+  eyebrow: { fontSize: 12, fontWeight: '900', letterSpacing: 1.4, textTransform: 'uppercase', color: Colors.primaryDark, marginBottom: 4 },
+  heroTitle: { fontSize: 30, lineHeight: 36, fontWeight: '900', color: Colors.text, letterSpacing: -0.7 },
+  heroSubtitle: { maxWidth: 250, fontSize: 14, lineHeight: 20, color: Colors.textSecondary, marginTop: Spacing.xs },
+  heroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.sm,
+    backgroundColor: Colors.primaryLight,
   },
-  kpiValue: { ...Typography.h4, color: Colors.text },
-  kpiLabel: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  kpiBlock: {
+    width: '47.8%',
+    minHeight: 136,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+  },
+  kpiIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  kpiValue: { fontSize: 20, lineHeight: 27, fontWeight: '900', color: Colors.text, letterSpacing: -0.4, marginTop: 4 },
+  kpiLabel: { fontSize: 10, lineHeight: 14, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase', color: Colors.textSecondary },
   card: {
     backgroundColor: Colors.surface,
-    margin: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
     gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
   },
-  cardTitle: { ...Typography.h4, color: Colors.text, marginBottom: Spacing.sm },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.sm },
+  cardTitle: { fontSize: 20, lineHeight: 26, fontWeight: '900', color: Colors.text },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.xs,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.divider,
   },
-  rowLabel: { ...Typography.body, color: Colors.textSecondary },
-  rowValue: { ...Typography.body, color: Colors.text, fontWeight: '500' },
-  bold: { fontWeight: '700', color: Colors.text },
-  center: {
+  rowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primaryLight },
+  rowLabel: { flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '700', color: Colors.textSecondary },
+  rowValue: { fontSize: 14, lineHeight: 20, color: Colors.text, fontWeight: '900' },
+  bold: { fontWeight: '900', color: Colors.text },
+  centerCard: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing['3xl'],
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    borderRadius: BorderRadius.xl,
+    backgroundColor: Colors.surface,
+    gap: Spacing.sm,
   },
-  emptyText: { ...Typography.body, color: Colors.textSecondary, marginTop: Spacing.md },
+  emptyTitle: { fontSize: 18, fontWeight: '900', color: Colors.text },
+  centerText: { fontSize: 13, lineHeight: 19, color: Colors.textSecondary, textAlign: 'center' },
 });

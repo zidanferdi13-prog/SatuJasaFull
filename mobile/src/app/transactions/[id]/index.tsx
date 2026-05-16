@@ -19,7 +19,7 @@ import {
   TRACKING_URL,
   PAYMENT_TYPE_LABELS,
 } from '../../../shared/constants';
-import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../../theme';
+import { Colors, Spacing, Shadow, BorderRadius } from '../../../theme';
 import { Payment, TransactionItem } from '../../../shared/types';
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -35,9 +35,13 @@ function ItemRow({ item }: { item: TransactionItem }) {
   return (
     <View style={styles.itemCard}>
       <View style={styles.itemRow}>
-        <Ionicons name="car-outline" size={16} color={Colors.textSecondary} />
-        <Text style={styles.itemPlate}>{item.vehicle?.plateNumber || '-'}</Text>
-        <Text style={styles.itemService}>{item.serviceType?.name || '-'}</Text>
+        <View style={styles.itemIconBox}>
+          <Ionicons name="car-outline" size={18} color={Colors.primaryDark} />
+        </View>
+        <View style={styles.itemMainInfo}>
+          <Text style={styles.itemPlate}>{item.vehicle?.plateNumber || '-'}</Text>
+          <Text style={styles.itemService}>{item.serviceType?.name || '-'}</Text>
+        </View>
       </View>
       <View style={styles.itemRow}>
         <Text style={styles.itemLabel}>Estimasi</Text>
@@ -91,7 +95,7 @@ export default function TransactionDetailScreen() {
   const { data: payments } = useTransactionPayments(id);
 
   if (isLoading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>;
+    return <View style={styles.center}><ActivityIndicator size="large" color={Colors.primaryDark} /></View>;
   }
   if (!transaction) {
     return <View style={styles.center}><Text>Transaksi tidak ditemukan</Text></View>;
@@ -152,18 +156,19 @@ export default function TransactionDetailScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Status Header */}
-      <View style={[styles.statusHeader, { backgroundColor: statusColor + '15' }]}>
+      <View style={[styles.statusHeader, Shadow.sm, { backgroundColor: statusColor + '12' }]}>
         <View style={styles.statusRow}>
           <Text style={styles.invoiceNum}>{transaction.invoiceNumber}</Text>
-          <View style={[styles.badge, { backgroundColor: statusColor + '30' }]}>
+          <View style={[styles.badge, { backgroundColor: statusColor + '16', borderColor: statusColor + '55' }]} >
             <Text style={[styles.badgeText, { color: statusColor }]}>
               {STATUS_LABELS[transaction.status]}
             </Text>
           </View>
         </View>
         <Text style={styles.customerName}>{transaction.customer?.name || '-'}</Text>
+        <Text style={styles.trackingHint}>Tracking {transaction.trackingCode}</Text>
       </View>
 
       {/* Transaction Info */}
@@ -283,92 +288,42 @@ export default function TransactionDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  statusHeader: {
-    padding: Spacing.lg,
-    gap: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  invoiceNum: { ...Typography.h3, color: Colors.text },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full },
-  badgeText: { fontSize: 12, fontWeight: '700' },
-  customerName: { ...Typography.body, color: Colors.textSecondary },
-  card: {
-    backgroundColor: Colors.surface,
-    margin: Spacing.sm,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    gap: Spacing.xs,
-  },
-  sectionTitle: { ...Typography.h4, color: Colors.text, marginBottom: Spacing.sm },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.divider,
-  },
-  rowLabel: { ...Typography.body, color: Colors.textSecondary },
-  rowValue: { ...Typography.body, color: Colors.text, fontWeight: '500', flex: 1, textAlign: 'right' },
-  itemCard: {
-    backgroundColor: Colors.background,
-    borderRadius: BorderRadius.sm,
-    padding: Spacing.sm,
-    marginBottom: Spacing.xs,
-    gap: 4,
-  },
-  itemRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs },
-  itemPlate: { ...Typography.body, fontWeight: '700', color: Colors.text },
-  itemService: { ...Typography.bodySmall, color: Colors.textSecondary, flex: 1 },
-  itemLabel: { ...Typography.caption, color: Colors.textSecondary },
-  itemPrice: { ...Typography.bodySmall, color: Colors.text, fontWeight: '600', marginRight: Spacing.sm },
-  paymentItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.divider,
-  },
-  paymentType: { ...Typography.body, fontWeight: '600', color: Colors.text },
-  paymentDate: { ...Typography.caption, color: Colors.textLight },
-  paymentAmount: { ...Typography.body, fontWeight: '700', color: Colors.success },
+  content: { padding: Spacing.lg, paddingTop: Spacing['2xl'], paddingBottom: 96, gap: Spacing.md },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
+  statusHeader: { padding: Spacing.xl, gap: Spacing.xs, borderWidth: 1, borderColor: '#C3C6D6', borderRadius: BorderRadius.xl },
+  statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: Spacing.md },
+  invoiceNum: { flex: 1, fontSize: 26, lineHeight: 32, fontWeight: '900', color: Colors.text, letterSpacing: -0.5 },
+  badge: { borderWidth: 1, paddingHorizontal: Spacing.sm, paddingVertical: 5, borderRadius: BorderRadius.sm },
+  badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase' },
+  customerName: { fontSize: 16, lineHeight: 22, color: Colors.text, fontWeight: '800', marginTop: Spacing.sm },
+  trackingHint: { fontSize: 12, lineHeight: 17, color: Colors.textSecondary, fontWeight: '900', letterSpacing: 0.7, textTransform: 'uppercase' },
+  card: { backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, gap: Spacing.xs, borderWidth: 1, borderColor: '#C3C6D6' },
+  sectionTitle: { fontSize: 20, lineHeight: 26, fontWeight: '900', color: Colors.text, marginBottom: Spacing.sm },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
+  rowLabel: { fontSize: 13, lineHeight: 18, color: Colors.textSecondary, fontWeight: '800' },
+  rowValue: { fontSize: 14, lineHeight: 20, color: Colors.text, fontWeight: '800', flex: 1, textAlign: 'right' },
+  itemCard: { backgroundColor: Colors.surfaceMuted, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.sm, gap: Spacing.sm, borderWidth: 1, borderColor: Colors.divider },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  itemIconBox: { width: 42, height: 42, borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryLight },
+  itemMainInfo: { flex: 1 },
+  itemPlate: { fontSize: 17, lineHeight: 23, fontWeight: '900', color: Colors.text },
+  itemService: { fontSize: 13, lineHeight: 18, color: Colors.textSecondary, fontWeight: '700' },
+  itemLabel: { fontSize: 11, lineHeight: 15, color: Colors.textSecondary, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase' },
+  itemPrice: { fontSize: 13, lineHeight: 18, color: Colors.text, fontWeight: '900', marginRight: Spacing.sm },
+  paymentItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
+  paymentType: { fontSize: 15, lineHeight: 21, fontWeight: '900', color: Colors.text },
+  paymentDate: { fontSize: 11, lineHeight: 15, color: Colors.textLight, fontWeight: '700', marginTop: 2 },
+  paymentAmount: { fontSize: 15, lineHeight: 21, fontWeight: '900', color: Colors.success },
   refundAmount: { color: Colors.danger },
-  logItem: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.sm },
-  logDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: Colors.primary, marginTop: 5,
-  },
+  logItem: { flexDirection: 'row', gap: Spacing.md, marginBottom: Spacing.md },
+  logDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: Colors.primaryDark, marginTop: 5, borderWidth: 3, borderColor: Colors.primaryLight },
   logContent: { flex: 1 },
-  logStatus: { ...Typography.body, fontWeight: '600', color: Colors.text },
-  logNotes: { ...Typography.bodySmall, color: Colors.textSecondary },
-  logDate: { ...Typography.caption, color: Colors.textLight },
-  actionsSection: {
-    padding: Spacing.md,
-    gap: Spacing.sm,
-    marginBottom: Spacing.xl,
-  },
-  shareBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 12,
-    gap: Spacing.sm,
-  },
-  shareBtnText: { color: Colors.primary, fontWeight: '700', fontSize: 15 },
-  primaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 14,
-    gap: Spacing.sm,
-  },
-  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  logStatus: { fontSize: 15, lineHeight: 21, fontWeight: '900', color: Colors.text },
+  logNotes: { fontSize: 13, lineHeight: 18, color: Colors.textSecondary, marginTop: 2 },
+  logDate: { fontSize: 11, lineHeight: 15, color: Colors.textLight, fontWeight: '700', marginTop: 2 },
+  actionsSection: { gap: Spacing.sm },
+  shareBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.primaryDark, borderRadius: BorderRadius.lg, paddingVertical: 14, gap: Spacing.sm, backgroundColor: Colors.primaryLight },
+  shareBtnText: { color: Colors.primaryDark, fontWeight: '900', fontSize: 15 },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryDark, borderRadius: BorderRadius.lg, paddingVertical: 15, gap: Spacing.sm },
+  primaryBtnText: { color: '#fff', fontWeight: '900', fontSize: 15 },
 });

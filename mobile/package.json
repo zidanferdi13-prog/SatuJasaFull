@@ -1,7 +1,7 @@
 {
   "name": "stnk-bureau-mobile",
   "version": "1.0.0",
-  "description": "STNK Bureau Service Management System - Mobile App",
+  "description": "SatuJasa Service Management System - Mobile App",
   "main": "expo-router/entry",
   "scripts": {
     "dev": "expo start",

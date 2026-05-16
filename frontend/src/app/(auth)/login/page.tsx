@@ -44,7 +44,7 @@ export default function LoginPage() {
       boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
     }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: '#1a1a1a' }}>
-        STNK Bureau
+        SatuJasa
       </h1>
       <p style={{ color: '#666', marginBottom: 32, fontSize: 14 }}>
         Masuk ke dashboard admin

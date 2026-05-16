@@ -16,7 +16,7 @@ export class InvoiceService {
       doc.pipe(stream);
 
       // Header
-      doc.fontSize(22).font('Helvetica-Bold').text(transaction.tenant?.name || 'STNK Bureau', { align: 'center' });
+      doc.fontSize(22).font('Helvetica-Bold').text(transaction.tenant?.name || 'SatuJasa', { align: 'center' });
       doc.fontSize(10).font('Helvetica').text('INVOICE', { align: 'center' }).moveDown(0.5);
       doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke().moveDown();
 

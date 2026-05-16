@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, Pressable, ActivityIndicator, Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTenant, useUpdateTenant } from '@/modules/settings/hooks/useSettings';
-import { Colors, Spacing, Typography, Shadow, BorderRadius } from '@/theme';
+import { Colors, Spacing, Shadow, BorderRadius } from '@/theme';
 import { getErrorMessage } from '@/shared/services/api-error';
 
 const EXAMPLE_TEMPLATE = `Halo {customerName},
@@ -38,11 +39,24 @@ export default function WhatsAppTemplateScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={[styles.heroCard, Shadow.sm]}>
+        <View>
+          <Text style={styles.eyebrow}>WhatsApp Automation</Text>
+          <Text style={styles.pageTitle}>Template Pesan</Text>
+          <Text style={styles.pageSubtitle}>Atur kalimat yang dikirim saat status STNK pelanggan diperbarui.</Text>
+        </View>
+        <View style={styles.heroIcon}>
+          <Ionicons name="logo-whatsapp" size={25} color="#128C7E" />
+        </View>
+      </View>
+
       <View style={[styles.card, Shadow.sm]}>
         <Text style={styles.sectionTitle}>Template Pesan WhatsApp</Text>
-        <Text style={styles.hint}>
-          Variabel yang tersedia: {'{customerName}'}, {'{plateNumber}'}, {'{trackingUrl}'}, {'{invoiceNumber}'}
-        </Text>
+        <View style={styles.tokenWrap}>
+          {['{customerName}', '{plateNumber}', '{trackingUrl}', '{invoiceNumber}'].map((token) => (
+            <Text key={token} style={styles.token}>{token}</Text>
+          ))}
+        </View>
         <TextInput
           style={styles.textarea}
           value={template}
@@ -61,11 +75,14 @@ export default function WhatsAppTemplateScreen() {
         </Pressable>
       </View>
 
-      <View style={[styles.infoCard]}>
-        <Text style={styles.infoTitle}>Cara Penggunaan</Text>
-        <Text style={styles.infoText}>
-          Template ini akan digunakan untuk mengirim notifikasi WhatsApp kepada pelanggan ketika status STNK mereka diperbarui.
-        </Text>
+      <View style={styles.infoCard}>
+        <Ionicons name="information-circle-outline" size={22} color={Colors.info} />
+        <View style={styles.infoContent}>
+          <Text style={styles.infoTitle}>Cara Penggunaan</Text>
+          <Text style={styles.infoText}>
+            Template ini dipakai untuk notifikasi WhatsApp pelanggan ketika status STNK mereka diperbarui.
+          </Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -73,26 +90,22 @@ export default function WhatsAppTemplateScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Spacing.md, gap: Spacing.sm },
-  card: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: Spacing.md, gap: Spacing.sm },
-  sectionTitle: { ...Typography.h4, color: Colors.text },
-  hint: { ...Typography.caption, color: Colors.textSecondary, lineHeight: 18 },
-  textarea: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
-    fontSize: 14, color: Colors.text, backgroundColor: Colors.background,
-    minHeight: 200, fontFamily: 'monospace',
-  },
-  saveBtn: {
-    backgroundColor: Colors.primary, borderRadius: BorderRadius.md,
-    paddingVertical: 14, alignItems: 'center',
-  },
+  content: { padding: Spacing.lg, paddingTop: Spacing['2xl'], paddingBottom: 96, gap: Spacing.md },
+  heroCard: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.xl, borderWidth: 1, borderColor: '#C3C6D6' },
+  heroIcon: { width: 48, height: 48, borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E3FFF1' },
+  eyebrow: { fontSize: 11, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase', color: '#128C7E', marginBottom: 4 },
+  pageTitle: { fontSize: 30, lineHeight: 36, fontWeight: '900', color: Colors.text, letterSpacing: -0.7 },
+  pageSubtitle: { maxWidth: 250, fontSize: 14, lineHeight: 20, color: Colors.textSecondary, marginTop: Spacing.xs },
+  card: { backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, gap: Spacing.md, borderWidth: 1, borderColor: '#C3C6D6' },
+  sectionTitle: { fontSize: 20, lineHeight: 26, fontWeight: '900', color: Colors.text },
+  tokenWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  token: { paddingHorizontal: Spacing.sm, paddingVertical: 5, borderRadius: BorderRadius.full, backgroundColor: Colors.primaryLight, color: Colors.primaryDark, fontSize: 11, fontWeight: '900' },
+  textarea: { borderWidth: 1, borderColor: '#C3C6D6', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, fontSize: 14, lineHeight: 20, color: Colors.text, backgroundColor: Colors.surfaceMuted, minHeight: 220, fontFamily: 'monospace' },
+  saveBtn: { backgroundColor: Colors.primaryDark, borderRadius: BorderRadius.lg, paddingVertical: 15, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  infoCard: {
-    backgroundColor: Colors.info + '15', borderRadius: BorderRadius.md,
-    padding: Spacing.md, gap: Spacing.xs,
-  },
-  infoTitle: { ...Typography.body, fontWeight: '700', color: Colors.info },
-  infoText: { ...Typography.bodySmall, color: Colors.info, lineHeight: 20 },
+  saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 15 },
+  infoCard: { flexDirection: 'row', backgroundColor: Colors.infoLight, borderRadius: BorderRadius.xl, padding: Spacing.md, gap: Spacing.sm, borderWidth: 1, borderColor: '#BAE6FD' },
+  infoContent: { flex: 1 },
+  infoTitle: { fontSize: 14, fontWeight: '900', color: Colors.info },
+  infoText: { fontSize: 13, lineHeight: 19, color: Colors.info, marginTop: 2 },
 });

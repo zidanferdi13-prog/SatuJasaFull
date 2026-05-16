@@ -15,36 +15,11 @@ import { Modal } from '../../../../../shared/components/Modal';
 import { formatDate, formatCurrency } from '../../../../../shared/utils/format';
 import { useAuthStore } from '../../../../../store/authStore';
 
-/* ─── styles ─── */
-const card: React.CSSProperties = {
-  background: 'white', borderRadius: 12, padding: 24,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: 20,
-};
-const label: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 };
-const input: React.CSSProperties = {
-  width: '100%', padding: '10px 12px', border: '1px solid #e5e5e5',
-  borderRadius: 8, fontSize: 14, boxSizing: 'border-box',
-};
-const btnPrimary: React.CSSProperties = {
-  padding: '10px 20px', borderRadius: 8, border: 'none',
-  background: '#007AFF', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-};
-const btnSecondary: React.CSSProperties = {
-  padding: '10px 20px', borderRadius: 8, border: '1px solid #e5e5e5',
-  background: 'white', color: '#333', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-};
-const btnDanger: React.CSSProperties = {
-  padding: '10px 20px', borderRadius: 8, border: 'none',
-  background: '#F44336', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-};
-const sectionTitle: React.CSSProperties = { fontSize: 16, fontWeight: 700, color: '#1a1a2e', marginBottom: 16, marginTop: 0 };
-const row: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', paddingBlock: 8, borderBottom: '1px solid #f0f0f0', fontSize: 14 };
-
-function InfoRow({ label: l, value }: { label: string; value?: string | number | boolean | null }) {
+function InfoRow({ label, value }: { label: string; value?: string | number | boolean | null }) {
   return (
-    <div style={row}>
-      <span style={{ color: '#888' }}>{l}</span>
-      <span style={{ fontWeight: 600, color: '#333' }}>{value ?? '—'}</span>
+    <div className="detail-row">
+      <span>{label}</span>
+      <strong>{value ?? '—'}</strong>
     </div>
   );
 }
@@ -54,11 +29,20 @@ function ErrorBanner({ error }: { error: unknown }) {
   const msg: string = err?.response?.data?.message || 'Terjadi kesalahan';
   const errors: { field: string; message: string }[] = err?.response?.data?.errors || [];
   return (
-    <div style={{ background: '#fce4ec', border: '1px solid #ef9a9a', borderRadius: 8, padding: 12, fontSize: 13, color: '#c62828', marginTop: 12 }}>
+    <div className="detail-error-box">
       <strong>{msg}</strong>
       {errors.map((e) => (
-        <div key={e.field} style={{ marginTop: 4 }}>• <b>{e.field.replace('body.', '')}</b>: {e.message}</div>
+        <div key={e.field}>• <b>{e.field.replace('body.', '')}</b>: {e.message}</div>
       ))}
+    </div>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="stat-tile">
+      <strong>{value}</strong>
+      <span>{label}</span>
     </div>
   );
 }
@@ -74,21 +58,19 @@ export default function TenantDetailPage({ params }: { params: { id: string } })
   const impersonate = useImpersonateTenant();
   const resetPassword = useResetOwnerPassword(id);
 
-  /* ── info form ── */
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [infoForm, setInfoForm] = useState({ name: '', phone: '', address: '' });
+  const [showSubModal, setShowSubModal] = useState(false);
+  const [subForm, setSubForm] = useState({ subscriptionEnd: '', subscriptionStatus: 'ACTIVE' as 'ACTIVE' | 'SUSPENDED' | 'EXPIRED', isActive: true });
+  const [showPwModal, setShowPwModal] = useState(false);
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [pwError, setPwError] = useState('');
 
   const openInfoModal = () => {
     setInfoForm({ name: tenant?.name ?? '', phone: tenant?.phone ?? '', address: tenant?.address ?? '' });
     setShowInfoModal(true);
   };
-  const handleSaveInfo = () => {
-    updateInfo.mutate(infoForm, { onSuccess: () => setShowInfoModal(false) });
-  };
-
-  /* ── subscription form ── */
-  const [showSubModal, setShowSubModal] = useState(false);
-  const [subForm, setSubForm] = useState({ subscriptionEnd: '', subscriptionStatus: 'ACTIVE' as 'ACTIVE' | 'SUSPENDED' | 'EXPIRED', isActive: true });
 
   const openSubModal = () => {
     setSubForm({
@@ -98,6 +80,9 @@ export default function TenantDetailPage({ params }: { params: { id: string } })
     });
     setShowSubModal(true);
   };
+
+  const handleSaveInfo = () => updateInfo.mutate(infoForm, { onSuccess: () => setShowInfoModal(false) });
+
   const handleSaveSub = () => {
     updateStatus.mutate({
       id,
@@ -109,12 +94,6 @@ export default function TenantDetailPage({ params }: { params: { id: string } })
     }, { onSuccess: () => setShowSubModal(false) });
   };
 
-  /* ── password reset ── */
-  const [showPwModal, setShowPwModal] = useState(false);
-  const [newPw, setNewPw] = useState('');
-  const [confirmPw, setConfirmPw] = useState('');
-  const [pwError, setPwError] = useState('');
-
   const handleResetPassword = () => {
     if (newPw.length < 8) { setPwError('Password minimal 8 karakter'); return; }
     if (newPw !== confirmPw) { setPwError('Password tidak cocok'); return; }
@@ -124,7 +103,6 @@ export default function TenantDetailPage({ params }: { params: { id: string } })
     });
   };
 
-  /* ── impersonate ── */
   const handleImpersonate = () => {
     if (!confirm(`Login sebagai owner ${tenant?.name}? Session admin akan digantikan sementara.`)) return;
     impersonate.mutate(id, {
@@ -138,235 +116,127 @@ export default function TenantDetailPage({ params }: { params: { id: string } })
   if (isLoading || !tenant) return <LoadingState />;
 
   const daysLeft = Math.ceil((new Date(tenant.subscriptionEnd).getTime() - Date.now()) / 86_400_000);
+  const initials = tenant.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-        <button onClick={() => router.push('/admin/tenants')} style={{ ...btnSecondary, padding: '8px 14px' }}>
-          ← Kembali
-        </button>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#1a1a2e' }}>{tenant.name}</h1>
-            <span style={{ fontFamily: 'monospace', fontSize: 13, background: '#e8f0fe', color: '#1a56db', padding: '3px 8px', borderRadius: 6, fontWeight: 700 }}>
-              {tenant.code}
-            </span>
+    <div className="tenant-detail-page">
+      <section className="detail-hero">
+        <button className="ghost-action" onClick={() => router.push('/admin/tenants')}>← Kembali</button>
+        <div className="detail-avatar">{initials}</div>
+        <div className="detail-title-wrap">
+          <div className="detail-title-line">
+            <h1>{tenant.name}</h1>
+            <span className="tenant-code-chip">{tenant.code}</span>
             <StatusBadge status={tenant.subscriptionStatus} type="tenant" />
             {!tenant.isActive && <StatusBadge status="INACTIVE" />}
           </div>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#888' }}>Dibuat {formatDate(tenant.createdAt)}</p>
+          <p>Dibuat {formatDate(tenant.createdAt)} • {tenant.phone || 'Nomor belum diisi'}</p>
         </div>
-      </div>
+        <button className="primary-action" onClick={handleImpersonate} disabled={impersonate.isPending}>Login Owner</button>
+      </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        {/* ── LEFT column ── */}
-        <div>
-          {/* Tenant Profile */}
-          <div style={card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={sectionTitle}>Profil Tenant</h2>
-              <button onClick={openInfoModal} style={{ ...btnPrimary, padding: '7px 16px', fontSize: 13 }}>Edit</button>
+      <section className="detail-grid">
+        <div className="detail-left">
+          <div className="detail-panel">
+            <div className="panel-head">
+              <div><span>Tenant Profile</span><h2>Profil Tenant</h2></div>
+              <button className="small-action" onClick={openInfoModal}>Edit</button>
             </div>
             <InfoRow label="Nama" value={tenant.name} />
             <InfoRow label="Telepon" value={tenant.phone} />
             <InfoRow label="Alamat" value={tenant.address} />
           </div>
 
-          {/* Stats */}
-          <div style={card}>
-            <h2 style={sectionTitle}>Statistik</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {[
-                { label: 'Transaksi', value: tenant._count?.transactions ?? 0, color: '#007AFF' },
-                { label: 'Staff', value: tenant._count?.users ?? 0, color: '#4CAF50' },
-                { label: 'Cabang', value: tenant._count?.branches ?? 0, color: '#FF9800' },
-              ].map(({ label: l, value, color }) => (
-                <div key={l} style={{ background: '#f8f9fa', borderRadius: 8, padding: '14px 16px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 26, fontWeight: 800, color }}>{value}</div>
-                  <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{l}</div>
-                </div>
-              ))}
-            </div>
+          <div className="stats-grid">
+            <StatTile label="Transaksi" value={tenant._count?.transactions ?? 0} />
+            <StatTile label="Staff" value={tenant._count?.users ?? 0} />
+            <StatTile label="Cabang" value={tenant._count?.branches ?? 0} />
           </div>
 
-          {/* Branches */}
           {tenant.branches?.length > 0 && (
-            <div style={card}>
-              <h2 style={sectionTitle}>Cabang</h2>
-              {tenant.branches.map((b) => (
-                <div key={b.id} style={{ ...row, alignItems: 'center' }}>
-                  <span>{b.name}</span>
-                  <span style={{
-                    fontSize: 12, padding: '2px 8px', borderRadius: 20, fontWeight: 600,
-                    background: b.isActive ? '#e8f5e9' : '#fce4ec',
-                    color: b.isActive ? '#2e7d32' : '#c62828',
-                  }}>
-                    {b.isActive ? 'Aktif' : 'Nonaktif'}
-                  </span>
-                </div>
-              ))}
+            <div className="detail-panel">
+              <div className="panel-head"><div><span>Branches</span><h2>Cabang</h2></div></div>
+              <div className="branch-list">
+                {tenant.branches.map((branch) => (
+                  <div key={branch.id} className="branch-row">
+                    <strong>{branch.name}</strong>
+                    <span className={branch.isActive ? 'active-chip' : 'danger-chip'}>{branch.isActive ? 'Aktif' : 'Nonaktif'}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
-        {/* ── RIGHT column ── */}
-        <div>
-          {/* Subscription */}
-          <div style={card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={sectionTitle}>Langganan</h2>
-              <button onClick={openSubModal} style={{ ...btnPrimary, padding: '7px 16px', fontSize: 13 }}>Edit</button>
+        <div className="detail-right">
+          <div className="detail-panel subscription-panel">
+            <div className="panel-head">
+              <div><span>Subscription</span><h2>Langganan</h2></div>
+              <button className="small-action" onClick={openSubModal}>Edit</button>
             </div>
             <InfoRow label="Status" value={tenant.subscriptionStatus} />
             <InfoRow label="Mulai" value={formatDate(tenant.subscriptionStart)} />
             <InfoRow label="Berakhir" value={formatDate(tenant.subscriptionEnd)} />
-            <div style={{ ...row, borderBottom: 'none' }}>
-              <span style={{ color: '#888' }}>Sisa Hari</span>
-              <span style={{ fontWeight: 700, color: daysLeft <= 7 ? '#F44336' : daysLeft <= 30 ? '#FF9800' : '#4CAF50' }}>
-                {daysLeft > 0 ? `${daysLeft} hari` : 'Kedaluwarsa'}
-              </span>
+            <div className="days-card">
+              <span>Sisa Hari</span>
+              <strong className={daysLeft <= 7 ? 'danger-text' : daysLeft <= 30 ? 'warning-text' : ''}>{daysLeft > 0 ? `${daysLeft} hari` : 'Kedaluwarsa'}</strong>
             </div>
           </div>
 
-          {/* Subscription History */}
           {tenant.subscriptions?.length > 0 && (
-            <div style={card}>
-              <h2 style={sectionTitle}>Riwayat Paket</h2>
-              {tenant.subscriptions.map((s) => (
-                <div key={s.id} style={{ ...row, alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{s.planName}</div>
-                    <div style={{ fontSize: 12, color: '#888' }}>{formatDate(s.startDate)} – {formatDate(s.endDate)}</div>
+            <div className="detail-panel">
+              <div className="panel-head"><div><span>History</span><h2>Riwayat Paket</h2></div></div>
+              <div className="package-list">
+                {tenant.subscriptions.map((subscription) => (
+                  <div key={subscription.id} className="package-row">
+                    <div><strong>{subscription.planName}</strong><span>{formatDate(subscription.startDate)} – {formatDate(subscription.endDate)}</span></div>
+                    <div><strong>{formatCurrency(subscription.price)}</strong><span className={subscription.status === 'ACTIVE' ? 'active-chip' : 'neutral-chip'}>{subscription.status}</span></div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 600 }}>{formatCurrency(s.price)}</div>
-                    <span style={{
-                      fontSize: 11, padding: '2px 7px', borderRadius: 20, fontWeight: 600,
-                      background: s.status === 'ACTIVE' ? '#e8f5e9' : '#f5f5f5',
-                      color: s.status === 'ACTIVE' ? '#2e7d32' : '#888',
-                    }}>
-                      {s.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Actions */}
-          <div style={card}>
-            <h2 style={sectionTitle}>Tindakan</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button
-                onClick={handleImpersonate}
-                disabled={impersonate.isPending}
-                style={{ ...btnPrimary, background: '#4CAF50', opacity: impersonate.isPending ? 0.6 : 1, textAlign: 'left' }}
-              >
-                🔑 Login sebagai Owner Tenant
-              </button>
-              <button
-                onClick={() => setShowPwModal(true)}
-                style={{ ...btnSecondary }}
-              >
-                🔒 Reset Password Owner
-              </button>
-            </div>
+          <div className="detail-panel action-panel">
+            <div className="panel-head"><div><span>Security</span><h2>Tindakan</h2></div></div>
+            <button className="primary-action wide" onClick={handleImpersonate} disabled={impersonate.isPending}>Login sebagai Owner Tenant</button>
+            <button className="ghost-action wide" onClick={() => setShowPwModal(true)}>Reset Password Owner</button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── Modal: Edit Profil ── */}
       <Modal isOpen={showInfoModal} onClose={() => setShowInfoModal(false)} title="Edit Profil Tenant">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {([
-            { key: 'name', label: 'Nama Tenant' },
-            { key: 'phone', label: 'Telepon' },
-            { key: 'address', label: 'Alamat' },
-          ] as { key: keyof typeof infoForm; label: string }[]).map(({ key, label: l }) => (
-            <div key={key}>
-              <label style={label}>{l}</label>
-              <input
-                style={input}
-                value={infoForm[key]}
-                onChange={(e) => setInfoForm({ ...infoForm, [key]: e.target.value })}
-              />
-            </div>
+        <div className="modal-form">
+          {([{ key: 'name', label: 'Nama Tenant' }, { key: 'phone', label: 'Telepon' }, { key: 'address', label: 'Alamat' }] as { key: keyof typeof infoForm; label: string }[]).map(({ key, label }) => (
+            <div className="field" key={key}><label>{label}</label><input value={infoForm[key]} onChange={(e) => setInfoForm({ ...infoForm, [key]: e.target.value })} /></div>
           ))}
           {updateInfo.isError && <ErrorBanner error={updateInfo.error} />}
-          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-            <button onClick={() => setShowInfoModal(false)} style={{ ...btnSecondary, flex: 1 }}>Batal</button>
-            <button onClick={handleSaveInfo} disabled={updateInfo.isPending} style={{ ...btnPrimary, flex: 2, opacity: updateInfo.isPending ? 0.6 : 1 }}>
-              {updateInfo.isPending ? 'Menyimpan...' : 'Simpan'}
-            </button>
-          </div>
+          <div className="modal-actions"><button className="ghost-action" onClick={() => setShowInfoModal(false)}>Batal</button><button className="primary-action" onClick={handleSaveInfo} disabled={updateInfo.isPending}>{updateInfo.isPending ? 'Menyimpan...' : 'Simpan'}</button></div>
         </div>
       </Modal>
 
-      {/* ── Modal: Edit Subscription ── */}
       <Modal isOpen={showSubModal} onClose={() => setShowSubModal(false)} title="Edit Langganan">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <label style={label}>Tanggal Berakhir</label>
-            <input
-              style={input} type="date" value={subForm.subscriptionEnd}
-              onChange={(e) => setSubForm({ ...subForm, subscriptionEnd: e.target.value })}
-            />
-          </div>
-          <div>
-            <label style={label}>Status Langganan</label>
-            <select
-              style={{ ...input }}
-              value={subForm.subscriptionStatus}
-              onChange={(e) => setSubForm({ ...subForm, subscriptionStatus: e.target.value as typeof subForm.subscriptionStatus })}
-            >
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="SUSPENDED">SUSPENDED</option>
-              <option value="EXPIRED">EXPIRED</option>
-            </select>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <input
-              id="isActive" type="checkbox" checked={subForm.isActive}
-              onChange={(e) => setSubForm({ ...subForm, isActive: e.target.checked })}
-              style={{ width: 18, height: 18 }}
-            />
-            <label htmlFor="isActive" style={{ ...label, margin: 0, cursor: 'pointer' }}>Tenant Aktif</label>
-          </div>
+        <div className="modal-form">
+          <div className="field"><label>Tanggal Berakhir</label><input type="date" value={subForm.subscriptionEnd} onChange={(e) => setSubForm({ ...subForm, subscriptionEnd: e.target.value })} /></div>
+          <div className="field"><label>Status Langganan</label><select value={subForm.subscriptionStatus} onChange={(e) => setSubForm({ ...subForm, subscriptionStatus: e.target.value as typeof subForm.subscriptionStatus })}><option value="ACTIVE">ACTIVE</option><option value="SUSPENDED">SUSPENDED</option><option value="EXPIRED">EXPIRED</option></select></div>
+          <label className="checkbox-row"><input type="checkbox" checked={subForm.isActive} onChange={(e) => setSubForm({ ...subForm, isActive: e.target.checked })} /> Tenant Aktif</label>
           {updateStatus.isError && <ErrorBanner error={updateStatus.error} />}
-          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-            <button onClick={() => setShowSubModal(false)} style={{ ...btnSecondary, flex: 1 }}>Batal</button>
-            <button onClick={handleSaveSub} disabled={updateStatus.isPending} style={{ ...btnPrimary, flex: 2, opacity: updateStatus.isPending ? 0.6 : 1 }}>
-              {updateStatus.isPending ? 'Menyimpan...' : 'Simpan'}
-            </button>
-          </div>
+          <div className="modal-actions"><button className="ghost-action" onClick={() => setShowSubModal(false)}>Batal</button><button className="primary-action" onClick={handleSaveSub} disabled={updateStatus.isPending}>{updateStatus.isPending ? 'Menyimpan...' : 'Simpan'}</button></div>
         </div>
       </Modal>
 
-      {/* ── Modal: Reset Password ── */}
       <Modal isOpen={showPwModal} onClose={() => { setShowPwModal(false); setNewPw(''); setConfirmPw(''); setPwError(''); }} title="Reset Password Owner">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <label style={label}>Password Baru</label>
-            <input style={input} type="password" placeholder="Min. 8 karakter" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-          </div>
-          <div>
-            <label style={label}>Konfirmasi Password</label>
-            <input style={input} type="password" placeholder="Ulangi password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
-          </div>
-          {pwError && <p style={{ margin: 0, fontSize: 13, color: '#c62828' }}>{pwError}</p>}
+        <div className="modal-form">
+          <div className="field"><label>Password Baru</label><input type="password" placeholder="Min. 8 karakter" value={newPw} onChange={(e) => setNewPw(e.target.value)} /></div>
+          <div className="field"><label>Konfirmasi Password</label><input type="password" placeholder="Ulangi password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} /></div>
+          {pwError && <p className="form-error">{pwError}</p>}
           {resetPassword.isError && <ErrorBanner error={resetPassword.error} />}
-          {resetPassword.isSuccess && (
-            <p style={{ margin: 0, fontSize: 13, color: '#2e7d32', fontWeight: 600 }}>✓ Password berhasil direset</p>
-          )}
-          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-            <button onClick={() => { setShowPwModal(false); setNewPw(''); setConfirmPw(''); setPwError(''); }} style={{ ...btnSecondary, flex: 1 }}>Batal</button>
-            <button onClick={handleResetPassword} disabled={resetPassword.isPending} style={{ ...btnDanger, flex: 2, opacity: resetPassword.isPending ? 0.6 : 1 }}>
-              {resetPassword.isPending ? 'Mereset...' : 'Reset Password'}
-            </button>
-          </div>
+          <div className="modal-actions"><button className="ghost-action" onClick={() => { setShowPwModal(false); setNewPw(''); setConfirmPw(''); setPwError(''); }}>Batal</button><button className="danger-action" onClick={handleResetPassword} disabled={resetPassword.isPending}>{resetPassword.isPending ? 'Mereset...' : 'Reset Password'}</button></div>
         </div>
       </Modal>
+
+      <style jsx global>{`
+        .tenant-detail-page{max-width:1440px;margin:0 auto}.detail-hero{display:flex;align-items:center;gap:16px;margin-bottom:24px}.detail-avatar{width:64px;height:64px;border-radius:20px;background:#dae2fd;color:#131b2e;display:grid;place-items:center;font-weight:900;font-size:20px}.detail-title-wrap{flex:1;min-width:0}.detail-title-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.detail-title-line h1{margin:0;font-size:34px;line-height:40px;font-weight:900;letter-spacing:-.03em}.detail-title-wrap p{margin:5px 0 0;color:#76777d}.tenant-code-chip,.active-chip,.danger-chip,.neutral-chip{display:inline-flex;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900}.tenant-code-chip{background:#d8e2ff;color:#004395}.active-chip{background:#e8f5e9;color:#2e7d32}.danger-chip{background:#ffdad6;color:#93000a}.neutral-chip{background:#f0edef;color:#45464d}.detail-grid{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:24px}.detail-left,.detail-right{display:grid;gap:18px;align-content:start}.detail-panel,.stat-tile{background:#fff;border:1px solid #c6c6cd;border-radius:18px;padding:22px}.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}.panel-head span{color:#76777d;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.panel-head h2{margin:5px 0 0;font-size:22px;line-height:28px;font-weight:900}.detail-row,.branch-row,.package-row{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-top:1px solid #e4e2e4}.detail-row:first-of-type{border-top:0}.detail-row span{color:#76777d}.detail-row strong{text-align:right}.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.stat-tile strong{display:block;font-size:32px;line-height:38px;font-weight:900}.stat-tile span{color:#76777d;font-size:12px;font-weight:800;text-transform:uppercase}.days-card{margin-top:14px;padding:18px;border-radius:16px;background:#f6f3f5}.days-card span{color:#76777d;font-size:12px;font-weight:900;text-transform:uppercase}.days-card strong{display:block;margin-top:8px;font-size:28px}.danger-text{color:#93000a}.warning-text{color:#b45309}.package-row>div{display:grid;gap:4px}.package-row>div:last-child{text-align:right}.package-row span{color:#76777d;font-size:12px}.action-panel{display:grid;gap:10px}.primary-action,.ghost-action,.danger-action,.small-action{border-radius:11px;min-height:40px;padding:0 16px;font-weight:900}.primary-action{background:#131b2e;color:white}.ghost-action{background:white;border:1px solid #c6c6cd;color:#45464d}.danger-action{background:#ba1a1a;color:white}.small-action{background:#2170e4;color:white}.wide{width:100%}.modal-form{display:grid;gap:14px}.field{display:grid;gap:6px}.field label,.checkbox-row{font-size:13px;font-weight:800;color:#1b1b1d}.field input,.field select{width:100%;min-height:42px;border:1px solid #c6c6cd;border-radius:10px;padding:0 12px}.checkbox-row{display:flex;gap:10px;align-items:center}.modal-actions{display:flex;justify-content:flex-end;gap:10px}.detail-error-box,.form-error{padding:12px;border:1px solid #ffb4ab;border-radius:10px;background:#ffdad6;color:#93000a;font-size:13px}.form-error{margin:0}@media(max-width:1000px){.detail-grid{grid-template-columns:1fr}.detail-hero{align-items:flex-start;flex-wrap:wrap}.stats-grid{grid-template-columns:1fr}}`}</style>
     </div>
   );
 }

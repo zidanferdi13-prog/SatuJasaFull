@@ -1,6 +1,6 @@
 # Frontend — Web Admin Dashboard
 
-Next.js + TypeScript admin dashboard for STNK Bureau Service Management SaaS Platform.
+Next.js + TypeScript admin dashboard for STNK SatuJasa Service Management SaaS Platform.
 
 > Full architecture reference: [`Doc/FRONTEND-ARCHITECTURE.md`](../Doc/FRONTEND-ARCHITECTURE.md)
 
@@ -31,7 +31,7 @@ Next.js + TypeScript admin dashboard for STNK Bureau Service Management SaaS Pla
 
 ## Multi-Tenant Architecture
 
-Shared-database multi-tenant model. Each tenant (bureau) has isolated data access, custom subscription, pricing, branding, and branch management.
+Shared-database multi-tenant model. Each tenant (SatuJasa) has isolated data access, custom subscription, pricing, branding, and branch management.
 
 JWT payload contains: `user_id`, `tenant_id`, `branch_id`, `role`.
 
@@ -100,7 +100,7 @@ Open: `http://localhost:3001`
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3000/api/v1
-NEXT_PUBLIC_APP_NAME=STNK Bureau Admin
+NEXT_PUBLIC_APP_NAME=STNK SatuJasa Admin
 ```
 
 ---

@@ -2,16 +2,17 @@
 
 import { useState } from 'react';
 import { useTracking } from '../../../../modules/tracking/hooks/useTracking';
-import { PageHeader } from '../../../../shared/components/PageHeader';
 import { StatusBadge } from '../../../../shared/components/StatusBadge';
 import { LoadingState } from '../../../../shared/components/LoadingState';
 import { formatCurrency, formatDateTime } from '../../../../shared/utils/format';
-import { TrackingInfo } from '../../../../modules/tracking/services/tracking.service';
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="tracking-detail-row"><span>{label}</span><strong>{children}</strong></div>;
+}
 
 export default function AdminTrackingPage() {
   const [code, setCode] = useState('');
   const [submittedCode, setSubmittedCode] = useState('');
-
   const { data, isLoading, isError } = useTracking(submittedCode);
 
   const handleSearch = () => {
@@ -19,111 +20,96 @@ export default function AdminTrackingPage() {
     if (trimmed) setSubmittedCode(trimmed);
   };
 
-  const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f0f0f0', fontSize: 14 };
-  const labelStyle: React.CSSProperties = { color: '#888', fontWeight: 500 };
-  const valueStyle: React.CSSProperties = { color: '#333', fontWeight: 600 };
-
   return (
-    <div>
-      <PageHeader title="Tracking Monitor" subtitle="Cari status transaksi berdasarkan kode tracking" />
-
-      <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
-        <input
-          placeholder="Masukkan kode tracking (contoh: TRK-ABC123)"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          style={{ flex: 1, padding: '12px 16px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' }}
-        />
-        <button
-          onClick={handleSearch}
-          style={{ padding: '12px 24px', borderRadius: 8, border: 'none', background: '#007AFF', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-        >
-          Cari
-        </button>
-      </div>
+    <div className="tracking-page">
+      <section className="tracking-hero">
+        <div className="tracking-copy">
+          <span>Public Tracking Monitor</span>
+          <h1>Cari status berkas kendaraan</h1>
+          <p>Masukkan kode tracking untuk melihat detail transaksi, pembayaran, dan progres status yang dilihat pelanggan.</p>
+        </div>
+        <div className="tracking-search-card">
+          <label>Kode Tracking</label>
+          <div className="tracking-search-box">
+            <input
+              placeholder="TRK-ABC123"
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              onKeyDown={(event) => event.key === 'Enter' && handleSearch()}
+            />
+            <button onClick={handleSearch}>Cari</button>
+          </div>
+          <small>Gunakan kode dari invoice atau link tracking WhatsApp.</small>
+        </div>
+      </section>
 
       {isLoading && <LoadingState />}
 
       {isError && submittedCode && (
-        <div style={{ background: '#fce4ec', border: '1px solid #ef9a9a', borderRadius: 8, padding: 16, color: '#c62828', fontSize: 14 }}>
-          Kode tracking <strong>{submittedCode}</strong> tidak ditemukan.
-        </div>
+        <section className="tracking-error">
+          <strong>Kode tracking tidak ditemukan</strong>
+          <span>{submittedCode}</span>
+        </section>
+      )}
+
+      {!submittedCode && !data && !isLoading && (
+        <section className="tracking-empty">
+          <span>⌕</span>
+          <h2>Belum ada pencarian</h2>
+          <p>Status transaksi akan tampil lengkap setelah kode tracking dimasukkan.</p>
+        </section>
       )}
 
       {data && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          {/* Transaction info */}
-          <div style={{ background: 'white', borderRadius: 10, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: '#333' }}>Informasi Transaksi</h2>
-            <div style={rowStyle}>
-              <span style={labelStyle}>No. Invoice</span>
-              <span style={{ ...valueStyle, fontFamily: 'monospace', color: '#007AFF' }}>{data.invoiceNumber}</span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Kode Tracking</span>
-              <span style={{ ...valueStyle, fontFamily: 'monospace' }}>{data.trackingCode}</span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Status</span>
+        <section className="tracking-result-grid">
+          <div className="tracking-summary-card">
+            <div className="tracking-card-head">
+              <div><span>Transaction</span><h2>{data.invoiceNumber}</h2></div>
               <StatusBadge status={data.status} />
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Pelanggan</span>
-              <span style={valueStyle}>{data.customer.name}</span>
+            <div className="tracking-code-box">
+              <span>Tracking Code</span>
+              <strong>{data.trackingCode}</strong>
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Tenant</span>
-              <span style={valueStyle}>{data.tenant.name} ({data.tenant.code})</span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Cabang</span>
-              <span style={valueStyle}>{data.branch.name}</span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Total Estimasi</span>
-              <span style={valueStyle}>{formatCurrency(data.estimatedTotal)}</span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Total Final</span>
-              <span style={valueStyle}>{formatCurrency(data.finalTotal)}</span>
-            </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>DP</span>
-              <span style={valueStyle}>{formatCurrency(data.dpAmount)}</span>
-            </div>
-            <div style={{ ...rowStyle, borderBottom: 'none' }}>
-              <span style={labelStyle}>Sisa Bayar</span>
-              <span style={{ ...valueStyle, color: data.remainingAmount > 0 ? '#F44336' : '#4CAF50' }}>
-                {formatCurrency(data.remainingAmount)}
-              </span>
+            <DetailRow label="Pelanggan">{data.customer.name}</DetailRow>
+            <DetailRow label="Tenant">{data.tenant.name} ({data.tenant.code})</DetailRow>
+            <DetailRow label="Cabang">{data.branch.name}</DetailRow>
+          </div>
+
+          <div className="tracking-payment-card">
+            <div className="tracking-card-head"><div><span>Payment</span><h2>Ringkasan Biaya</h2></div></div>
+            <DetailRow label="Total Estimasi">{formatCurrency(data.estimatedTotal)}</DetailRow>
+            <DetailRow label="Total Final">{formatCurrency(data.finalTotal)}</DetailRow>
+            <DetailRow label="DP">{formatCurrency(data.dpAmount)}</DetailRow>
+            <div className="remaining-box">
+              <span>Sisa Bayar</span>
+              <strong className={data.remainingAmount > 0 ? 'danger-text' : 'success-text'}>{formatCurrency(data.remainingAmount)}</strong>
             </div>
           </div>
 
-          {/* Timeline */}
-          <div style={{ background: 'white', borderRadius: 10, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: '#333' }}>Timeline</h2>
+          <div className="tracking-timeline-card">
+            <div className="tracking-card-head"><div><span>Timeline</span><h2>Perjalanan Status</h2></div></div>
             {data.timeline.length === 0 ? (
-              <p style={{ color: '#888', fontSize: 14 }}>Belum ada perubahan status.</p>
+              <div className="timeline-empty">Belum ada perubahan status.</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {data.timeline.map((t, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#007AFF', marginTop: 4, flexShrink: 0 }} />
+              <div className="tracking-timeline">
+                {data.timeline.map((item, index) => (
+                  <div className="timeline-item" key={`${item.createdAt}-${index}`}>
+                    <div className="timeline-marker" />
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>
-                        {t.fromStatus ? `${t.fromStatus} → ` : ''}{t.toStatus}
-                      </div>
-                      {t.notes && <div style={{ fontSize: 12, color: '#666' }}>{t.notes}</div>}
-                      <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{formatDateTime(t.createdAt)}</div>
+                      <strong>{item.fromStatus ? `${item.fromStatus} → ` : ''}{item.toStatus}</strong>
+                      {item.notes && <p>{item.notes}</p>}
+                      <span>{formatDateTime(item.createdAt)}</span>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
+        </section>
       )}
+
+      <style jsx global>{`.tracking-page{max-width:1440px;margin:0 auto}.tracking-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.7fr);gap:24px;align-items:stretch;margin-bottom:24px}.tracking-copy,.tracking-search-card,.tracking-summary-card,.tracking-payment-card,.tracking-timeline-card,.tracking-empty,.tracking-error{background:#fff;border:1px solid #c6c6cd;border-radius:18px}.tracking-copy{position:relative;overflow:hidden;min-height:260px;padding:34px;background:#131b2e;color:#fff}.tracking-copy:after{content:'';position:absolute;right:-90px;bottom:-110px;width:260px;height:260px;border-radius:999px;background:#2170e4;opacity:.28}.tracking-copy span,.tracking-search-card label,.tracking-card-head span{font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}.tracking-copy span{color:#d8e2ff}.tracking-copy h1{position:relative;margin:10px 0 0;max-width:720px;font-size:44px;line-height:50px;font-weight:900;letter-spacing:-.04em}.tracking-copy p{position:relative;margin:12px 0 0;max-width:620px;color:rgba(255,255,255,.74);font-size:15px;line-height:25px}.tracking-search-card{display:grid;align-content:center;gap:10px;padding:24px}.tracking-search-card label,.tracking-card-head span{color:#76777d}.tracking-search-box{display:flex;gap:10px}.tracking-search-box input{flex:1;min-width:0;min-height:48px;border:1px solid #c6c6cd;border-radius:13px;background:#f6f3f5;padding:0 14px;font-weight:900;text-transform:uppercase}.tracking-search-box button{min-height:48px;padding:0 20px;border-radius:13px;background:#2170e4;color:#fff;font-weight:900}.tracking-search-card small{color:#76777d}.tracking-error{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px;padding:16px 20px;background:#ffdad6;color:#93000a}.tracking-error span{font-family:monospace;font-weight:900}.tracking-empty{display:grid;place-items:center;padding:70px 24px;text-align:center}.tracking-empty span{display:grid;place-items:center;width:58px;height:58px;border-radius:18px;background:#d8e2ff;color:#004395;font-size:30px}.tracking-empty h2{margin:16px 0 0;font-size:24px;font-weight:900}.tracking-empty p{margin:6px 0 0;color:#76777d}.tracking-result-grid{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:24px}.tracking-summary-card,.tracking-payment-card,.tracking-timeline-card{padding:24px}.tracking-timeline-card{grid-column:1/-1}.tracking-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.tracking-card-head h2{margin:6px 0 0;font-size:24px;font-weight:900}.tracking-code-box{padding:18px;border-radius:16px;background:#f6f3f5;margin-bottom:12px}.tracking-code-box span,.remaining-box span{color:#76777d;font-size:12px;font-weight:900;text-transform:uppercase}.tracking-code-box strong{display:block;margin-top:6px;color:#004395;font-family:monospace;font-size:22px}.tracking-detail-row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #e4e2e4}.tracking-detail-row span{color:#76777d}.tracking-detail-row strong{text-align:right}.remaining-box{margin-top:14px;padding:18px;border-radius:16px;background:#f6f3f5}.remaining-box strong{display:block;margin-top:7px;font-size:30px;font-weight:900}.danger-text{color:#93000a}.success-text{color:#2e7d32}.tracking-timeline{display:grid}.timeline-item{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid #e4e2e4}.timeline-item:first-child{border-top:0}.timeline-item:before{content:'';position:absolute;left:6px;top:0;bottom:0;width:2px;background:#e4e2e4}.timeline-marker{position:relative;z-index:1;width:14px;height:14px;margin-top:3px;border:3px solid #d8e2ff;border-radius:999px;background:#2170e4}.timeline-item strong{font-weight:900}.timeline-item p{margin:5px 0 0;color:#45464d}.timeline-item span,.timeline-empty{display:block;margin-top:5px;color:#76777d;font-size:12px}@media(max-width:1000px){.tracking-hero,.tracking-result-grid{grid-template-columns:1fr}.tracking-copy h1{font-size:36px;line-height:42px}}@media(max-width:640px){.tracking-search-box{flex-direction:column}.tracking-detail-row{display:grid}.tracking-detail-row strong{text-align:left}}`}</style>
     </div>
   );
 }

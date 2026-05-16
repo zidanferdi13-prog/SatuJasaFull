@@ -12,22 +12,20 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCustomers } from '../../modules/customers/hooks/useCustomers';
 import { Customer } from '../../shared/types';
-import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../theme';
+import { Colors, Spacing, Shadow, BorderRadius } from '../../theme';
 
 function CustomerCard({ item, onPress }: { item: Customer; onPress: () => void }) {
   return (
     <Pressable style={[styles.card, Shadow.sm]} onPress={onPress}>
-      <View style={styles.cardRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
-        </View>
-        <View style={styles.info}>
-          <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.phone}>{item.phone}</Text>
-          {item.email && <Text style={styles.email}>{item.email}</Text>}
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
       </View>
+      <View style={styles.info}>
+        <Text style={styles.name}>{item.name}</Text>
+        <Text style={styles.phone}>{item.phone}</Text>
+        {item.email && <Text style={styles.email}>{item.email}</Text>}
+      </View>
+      <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
     </Pressable>
   );
 }
@@ -39,19 +37,25 @@ export default function CustomerListScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchBox}>
-        <Ionicons name="search-outline" size={18} color={Colors.textLight} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Cari nama atau nomor HP..."
-          value={search}
-          onChangeText={setSearch}
-        />
-        {search.length > 0 && (
-          <Pressable onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={18} color={Colors.textLight} />
-          </Pressable>
-        )}
+      <View style={styles.searchSection}>
+        <Text style={styles.eyebrow}>Customer Registry</Text>
+        <Text style={styles.pageTitle}>Pelanggan</Text>
+        <Text style={styles.pageSubtitle}>Cari data pemilik kendaraan dan riwayat layanan STNK.</Text>
+        <View style={[styles.searchBox, Shadow.sm]}>
+          <Ionicons name="search-outline" size={20} color={Colors.textLight} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Cari nama atau nomor HP..."
+            placeholderTextColor={Colors.textLight}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <Pressable onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color={Colors.textLight} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {isLoading ? (
@@ -70,9 +74,10 @@ export default function CustomerListScreen() {
           )}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <View style={styles.center}>
-              <Ionicons name="people-outline" size={48} color={Colors.textLight} />
-              <Text style={styles.emptyText}>Belum ada pelanggan</Text>
+            <View style={styles.emptyCard}>
+              <Ionicons name="people-outline" size={42} color={Colors.textLight} />
+              <Text style={styles.emptyTitle}>Belum ada pelanggan</Text>
+              <Text style={styles.emptyText}>Tambahkan pelanggan pertama untuk mulai mencatat kendaraan.</Text>
             </View>
           }
           onRefresh={refetch}
@@ -89,52 +94,23 @@ export default function CustomerListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    margin: Spacing.md,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    gap: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.text },
-  listContent: { padding: Spacing.sm, paddingBottom: 80 },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primary + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { ...Typography.h4, color: Colors.primary },
-  info: { flex: 1 },
-  name: { ...Typography.body, fontWeight: '600', color: Colors.text },
-  phone: { ...Typography.bodySmall, color: Colors.textSecondary },
-  email: { ...Typography.caption, color: Colors.textLight },
+  searchSection: { paddingHorizontal: Spacing.lg, paddingTop: Spacing['2xl'], paddingBottom: Spacing.sm },
+  eyebrow: { fontSize: 12, fontWeight: '900', letterSpacing: 1.4, textTransform: 'uppercase', color: Colors.primaryDark, marginBottom: 4 },
+  pageTitle: { fontSize: 32, lineHeight: 38, fontWeight: '900', color: Colors.text, letterSpacing: -0.8 },
+  pageSubtitle: { fontSize: 14, lineHeight: 20, color: Colors.textSecondary, marginTop: Spacing.xs, marginBottom: Spacing.lg },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, paddingHorizontal: Spacing.md, paddingVertical: 12, gap: Spacing.sm, borderWidth: 1, borderColor: '#C3C6D6' },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.text, paddingVertical: 0 },
+  listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 96, gap: Spacing.md },
+  card: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.md, borderWidth: 1, borderColor: '#C3C6D6' },
+  avatar: { width: 52, height: 52, borderRadius: BorderRadius.lg, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 20, fontWeight: '900', color: Colors.primaryDark },
+  info: { flex: 1, minWidth: 0 },
+  name: { fontSize: 17, lineHeight: 23, fontWeight: '900', color: Colors.text },
+  phone: { fontSize: 13, lineHeight: 18, color: Colors.textSecondary, fontWeight: '700', marginTop: 2 },
+  email: { fontSize: 12, lineHeight: 16, color: Colors.textLight, marginTop: 2 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing['3xl'] },
-  emptyText: { ...Typography.body, color: Colors.textSecondary, marginTop: Spacing.md },
-  fab: {
-    position: 'absolute',
-    bottom: Spacing.xl,
-    right: Spacing.xl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.md,
-  },
+  emptyCard: { alignItems: 'center', justifyContent: 'center', padding: Spacing['3xl'], backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, borderWidth: 1, borderColor: '#C3C6D6' },
+  emptyTitle: { fontSize: 18, fontWeight: '900', color: Colors.text, marginTop: Spacing.md },
+  emptyText: { fontSize: 14, lineHeight: 20, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
+  fab: { position: 'absolute', bottom: Spacing.xl, right: Spacing.xl, width: 58, height: 58, borderRadius: BorderRadius.lg, backgroundColor: Colors.primaryDark, alignItems: 'center', justifyContent: 'center', ...Shadow.md },
 });

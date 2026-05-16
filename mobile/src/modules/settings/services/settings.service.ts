@@ -38,10 +38,8 @@ export const settingsService = {
     return data.data;
   },
 
-  // Tenant profile — uses GET /tenants/:id (no /tenants/me endpoint in API)
-  getTenant: async (): Promise<Tenant> => {
-    const tenantId = getTenantId();
-    const { data } = await apiClient.get<ApiResponse<Tenant>>(`/tenants/${tenantId}`);
+    getTenant: async (): Promise<Tenant> => {
+    const { data } = await apiClient.get<ApiResponse<Tenant>>('/tenants/me');
     return data.data;
   },
 
@@ -65,15 +63,8 @@ export const settingsService = {
     return data.data;
   },
 
-  // Subscription data is part of the tenant object — no dedicated endpoint exists
-  getSubscription: async (): Promise<Pick<Tenant, 'subscriptionStatus' | 'subscriptionEnd' | 'subscriptionStart'>> => {
-    const tenantId = getTenantId();
-    const { data } = await apiClient.get<ApiResponse<Tenant>>(`/tenants/${tenantId}`);
-    const tenant = data.data;
-    return {
-      subscriptionStatus: tenant.subscriptionStatus,
-      subscriptionEnd: tenant.subscriptionEnd,
-      subscriptionStart: tenant.subscriptionStart,
-    };
+  getSubscription: async (): Promise<Tenant> => {
+    const { data } = await apiClient.get<ApiResponse<Tenant>>('/auth/subscription');
+    return data.data;
   },
 };

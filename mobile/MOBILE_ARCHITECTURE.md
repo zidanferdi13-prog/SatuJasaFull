@@ -1,7 +1,7 @@
 # Mobile Architecture — Jasaku Tenant App
 
 ## Overview
-Expo SDK ~50 + expo-router v3 (file-based routing) mobile application for STNK Bureau Service Management SaaS. Tenant operational app used by bureau owners/admins.
+Expo SDK ~50 + expo-router v3 (file-based routing) mobile application for SatuJasa Service Management SaaS. Tenant operational app used by bureau owners/admins.
 
 ## Stack
 | Layer | Technology |

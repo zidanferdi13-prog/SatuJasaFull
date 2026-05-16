@@ -1,7 +1,7 @@
 {
   "name": "stnk-bureau-backend",
   "version": "1.0.0",
-  "description": "STNK Bureau Service Management System - Backend API",
+  "description": "SatuJasa Service Management System - Backend API",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

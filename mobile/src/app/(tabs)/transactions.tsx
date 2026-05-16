@@ -23,6 +23,45 @@ const STATUS_FILTERS: Array<{ label: string; value: TransactionStatus | undefine
   { label: 'Ditutup', value: 'CLOSED' },
 ];
 
+const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+type DateFilter = 'today' | 'month' | 'lastMonth' | 'all';
+
+const DATE_FILTERS: Array<{ label: string; value: DateFilter }> = [
+  { label: 'Hari Ini', value: 'today' },
+  { label: 'Bulan Ini', value: 'month' },
+  { label: 'Bulan Lalu', value: 'lastMonth' },
+  { label: 'Semua Tanggal', value: 'all' },
+];
+
+function toApiDate(date: Date) {
+  return date.toISOString();
+}
+
+function getDateRange(filter: DateFilter) {
+  const now = new Date();
+  if (filter === 'all') return {};
+
+  if (filter === 'today') {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, -1);
+    return { startDate: toApiDate(start), endDate: toApiDate(end) };
+  }
+
+  const monthOffset = filter === 'lastMonth' ? -1 : 0;
+  const start = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + monthOffset + 1, 1, 0, 0, -1);
+  return { startDate: toApiDate(start), endDate: toApiDate(end) };
+}
+
+function getDateFilterLabel(filter: DateFilter) {
+  const now = new Date();
+  if (filter === 'today') return 'Hari ini';
+  if (filter === 'all') return 'Semua tanggal';
+  const month = new Date(now.getFullYear(), now.getMonth() + (filter === 'lastMonth' ? -1 : 0), 1);
+  return `${MONTHS_ID[month.getMonth()]} ${month.getFullYear()}`;
+}
+
 function TransactionCard({ item, onPress }: { item: Transaction; onPress: () => void }) {
   const statusColor = STATUS_COLORS[item.status] || Colors.textLight;
   const primaryItem = item.items?.[0];
@@ -72,10 +111,13 @@ export default function TransactionsScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | undefined>(undefined);
+  const [dateFilter, setDateFilter] = useState<DateFilter>('month');
+  const dateRange = getDateRange(dateFilter);
 
   const { data: transactions, isLoading, refetch } = useTransactions({
     search: search.length >= 2 ? search : undefined,
     status: statusFilter,
+    ...dateRange,
   });
 
   return (
@@ -98,17 +140,44 @@ export default function TransactionsScreen() {
               </Pressable>
             )}
           </View>
-          <Pressable style={styles.tuneButton}>
-            <Ionicons name="options-outline" size={22} color={Colors.textSecondary} />
-          </Pressable>
+          <View style={styles.dateSummary}>
+            <Ionicons name="calendar-outline" size={16} color={Colors.primaryDark} />
+            <Text style={styles.dateSummaryText}>{getDateFilterLabel(dateFilter)}</Text>
+          </View>
         </View>
+
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={DATE_FILTERS}
+          keyExtractor={(item) => item.value}
+          contentContainerStyle={styles.filterList}
+          renderItem={({ item }) => (
+            <Pressable
+              style={[
+                styles.filterChip,
+                dateFilter === item.value && styles.filterChipActive,
+              ]}
+              onPress={() => setDateFilter(item.value)}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  dateFilter === item.value && styles.filterChipTextActive,
+                ]}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          )}
+        />
 
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
           data={STATUS_FILTERS}
           keyExtractor={(item) => item.label}
-          contentContainerStyle={styles.filterList}
+          contentContainerStyle={[styles.filterList, styles.statusFilterList]}
           renderItem={({ item }) => (
             <Pressable
               style={[
@@ -190,18 +259,22 @@ const styles = StyleSheet.create({
     ...Shadow.sm,
   },
   searchInput: { flex: 1, fontSize: 14, color: Colors.text, paddingVertical: 0 },
-  tuneButton: {
-    width: 48,
-    height: 48,
+  dateSummary: {
+    minHeight: 48,
+    maxWidth: 112,
     borderRadius: BorderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.primaryLight,
     borderWidth: 1,
     borderColor: '#C3C6D6',
+    paddingHorizontal: Spacing.sm,
+    gap: 2,
     ...Shadow.sm,
   },
+  dateSummaryText: { fontSize: 10, lineHeight: 13, color: Colors.primaryDark, fontWeight: '900', textAlign: 'center' },
   filterList: { gap: Spacing.sm, paddingRight: Spacing.lg },
+  statusFilterList: { paddingTop: Spacing.sm },
   filterChip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,

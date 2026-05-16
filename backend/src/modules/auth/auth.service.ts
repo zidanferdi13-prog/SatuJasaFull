@@ -134,13 +134,51 @@ export class AuthService {
         branchId: true,
         isActive: true,
         lastLoginAt: true,
-        tenant: { select: { id: true, code: true, name: true, logoUrl: true, subscriptionStatus: true } },
+        tenant: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            logoUrl: true,
+            subscriptionStart: true,
+            subscriptionEnd: true,
+            subscriptionStatus: true,
+            isActive: true,
+            subscriptions: { orderBy: { createdAt: 'desc' }, take: 1 },
+          },
+        },
         branch: { select: { id: true, name: true } },
       },
     });
 
     if (!user) throw Object.assign(new Error('User not found'), { statusCode: 404 });
     return user;
+  }
+
+  static async subscription(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        tenant: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            logoUrl: true,
+            subscriptionStart: true,
+            subscriptionEnd: true,
+            subscriptionStatus: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true,
+            subscriptions: { orderBy: { createdAt: 'desc' }, take: 1 },
+          },
+        },
+      },
+    });
+
+    if (!user?.tenant) throw Object.assign(new Error('Tenant subscription not found'), { statusCode: 404 });
+    return user.tenant;
   }
 
   static async registerTenant(data: {

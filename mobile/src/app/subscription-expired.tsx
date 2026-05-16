@@ -31,7 +31,7 @@ export default function SubscriptionExpiredScreen() {
       <Text style={styles.title}>Langganan Kadaluarsa</Text>
       <Text style={styles.message}>
         Masa langganan akun biro jasa Anda telah berakhir.{'\n\n'}
-        Untuk melanjutkan penggunaan aplikasi, hubungi admin platform STNK Bureau
+        Untuk melanjutkan penggunaan aplikasi, hubungi admin platform SatuJasa
         untuk memperpanjang langganan Anda.
       </Text>
 

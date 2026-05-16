@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import apiClient from '@/shared/services/api-client';
 import { ApiResponse, Transaction } from '@/shared/types';
 import { TRACKING_URL } from '@/shared/constants';
-import { Colors, Spacing, Typography, Shadow, BorderRadius } from '@/theme';
+import { Colors, Spacing, Shadow, BorderRadius } from '@/theme';
 import { getErrorMessage } from '@/shared/services/api-error';
 import { STATUS_COLORS, STATUS_LABELS } from '@/shared/constants';
 
@@ -57,11 +57,19 @@ export default function TrackingScreen() {
   const statusColor = result ? STATUS_COLORS[result.status] : Colors.textLight;
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.searchCard}>
-        <Text style={styles.title}>Cari Tracking</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={[styles.searchCard, Shadow.sm]}>
+        <View style={styles.searchHeader}>
+          <View>
+            <Text style={styles.eyebrow}>Tracking Desk</Text>
+            <Text style={styles.title}>Cari Berkas</Text>
+          </View>
+          <View style={styles.headerIcon}>
+            <Ionicons name="navigate-outline" size={24} color={Colors.primaryDark} />
+          </View>
+        </View>
         <Text style={styles.subtitle}>
-          Cari berdasarkan kode tracking, nomor invoice, atau nomor plat
+          Masukkan kode tracking, invoice, atau plat nomor untuk melihat progres STNK.
         </Text>
 
         <View style={styles.inputRow}>
@@ -97,9 +105,16 @@ export default function TrackingScreen() {
 
       {result && (
         <View style={[styles.resultCard, Shadow.md]}>
-          <View style={styles.resultRow}>
-            <Text style={styles.invoiceLabel}>Invoice</Text>
-            <Text style={styles.invoiceNum}>{result.invoiceNumber}</Text>
+          <View style={styles.resultHero}>
+            <View>
+              <Text style={styles.invoiceLabel}>Invoice</Text>
+              <Text style={styles.invoiceNum}>{result.invoiceNumber}</Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: statusColor + '16', borderColor: statusColor + '55' }]}>
+              <Text style={[styles.badgeText, { color: statusColor }]}>
+                {STATUS_LABELS[result.status]}
+              </Text>
+            </View>
           </View>
           <View style={styles.resultRow}>
             <Text style={styles.resultLabel}>Pelanggan</Text>
@@ -140,84 +155,32 @@ export default function TrackingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  searchCard: {
-    backgroundColor: Colors.surface,
-    margin: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    ...Shadow.sm,
-  },
-  title: { ...Typography.h3, color: Colors.text, marginBottom: Spacing.xs },
-  subtitle: { ...Typography.bodySmall, color: Colors.textSecondary, marginBottom: Spacing.lg },
+  content: { padding: Spacing.lg, paddingTop: Spacing['2xl'], paddingBottom: 104, gap: Spacing.md },
+  searchCard: { backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.xl, borderWidth: 1, borderColor: '#C3C6D6' },
+  searchHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: Spacing.sm },
+  eyebrow: { fontSize: 12, fontWeight: '900', letterSpacing: 1.4, textTransform: 'uppercase', color: Colors.primaryDark, marginBottom: 4 },
+  title: { fontSize: 30, lineHeight: 36, fontWeight: '900', color: Colors.text, letterSpacing: -0.7 },
+  subtitle: { fontSize: 14, lineHeight: 20, color: Colors.textSecondary, marginBottom: Spacing.lg },
+  headerIcon: { width: 48, height: 48, borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryLight },
   inputRow: { flexDirection: 'row', gap: Spacing.sm },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: Colors.text,
-    backgroundColor: Colors.background,
-  },
-  searchBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    width: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  input: { flex: 1, borderWidth: 1, borderColor: '#C3C6D6', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing.md, paddingVertical: 13, fontSize: 15, color: Colors.text, backgroundColor: Colors.surface },
+  searchBtn: { backgroundColor: Colors.primaryDark, borderRadius: BorderRadius.lg, width: 50, alignItems: 'center', justifyContent: 'center' },
   searchBtnDisabled: { opacity: 0.6 },
-  errorBox: {
-    flexDirection: 'row',
-    backgroundColor: Colors.dangerLight,
-    margin: Spacing.md,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-    alignItems: 'center',
-  },
-  errorText: { ...Typography.body, color: Colors.danger, flex: 1 },
-  resultCard: {
-    backgroundColor: Colors.surface,
-    margin: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  resultRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.divider,
-  },
-  invoiceLabel: { ...Typography.bodySmall, color: Colors.textSecondary },
-  invoiceNum: { ...Typography.h4, color: Colors.text },
-  resultLabel: { ...Typography.body, color: Colors.textSecondary },
-  resultValue: { ...Typography.body, color: Colors.text, fontWeight: '500' },
-  badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: BorderRadius.full },
-  badgeText: { fontSize: 12, fontWeight: '700' },
-  trackingCode: {
-    ...Typography.body,
-    color: Colors.primary,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  vehiclesSection: { marginTop: Spacing.xs },
-  vehiclesTitle: { ...Typography.bodySmall, color: Colors.textSecondary, marginBottom: Spacing.xs, fontWeight: '600' },
-  vehicleItem: { ...Typography.body, color: Colors.text, marginBottom: 2 },
-  shareBtn: {
-    flexDirection: 'row',
-    backgroundColor: Colors.success,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.sm,
-  },
-  shareBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  errorBox: { flexDirection: 'row', backgroundColor: Colors.dangerLight, borderRadius: BorderRadius.xl, padding: Spacing.md, gap: Spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: '#FFB4AB' },
+  errorText: { fontSize: 14, lineHeight: 20, color: Colors.danger, flex: 1, fontWeight: '700' },
+  resultCard: { backgroundColor: Colors.surface, borderRadius: BorderRadius.xl, padding: Spacing.lg, gap: Spacing.sm, borderWidth: 1, borderColor: '#C3C6D6' },
+  resultHero: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: Spacing.md, paddingBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
+  resultRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
+  invoiceLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase', color: Colors.textSecondary },
+  invoiceNum: { fontSize: 24, lineHeight: 30, fontWeight: '900', color: Colors.text, letterSpacing: -0.4 },
+  resultLabel: { fontSize: 13, lineHeight: 18, fontWeight: '800', color: Colors.textSecondary },
+  resultValue: { flex: 1, textAlign: 'right', fontSize: 14, lineHeight: 20, color: Colors.text, fontWeight: '800' },
+  badge: { borderWidth: 1, paddingHorizontal: Spacing.sm, paddingVertical: 5, borderRadius: BorderRadius.sm },
+  badgeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase' },
+  trackingCode: { fontSize: 14, lineHeight: 20, color: Colors.primaryDark, fontWeight: '900', letterSpacing: 1.2 },
+  vehiclesSection: { marginTop: Spacing.sm, backgroundColor: Colors.surfaceMuted, borderRadius: BorderRadius.lg, padding: Spacing.md, borderWidth: 1, borderColor: Colors.divider },
+  vehiclesTitle: { fontSize: 12, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase', color: Colors.textSecondary, marginBottom: Spacing.sm },
+  vehicleItem: { fontSize: 14, lineHeight: 20, color: Colors.text, marginBottom: 4, fontWeight: '700' },
+  shareBtn: { flexDirection: 'row', backgroundColor: Colors.primaryDark, borderRadius: BorderRadius.lg, paddingVertical: 15, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, marginTop: Spacing.sm },
+  shareBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
 });

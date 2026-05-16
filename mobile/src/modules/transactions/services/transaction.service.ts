@@ -30,8 +30,15 @@ export const transactionService = {
     endDate?: string;
     page?: number;
     limit?: number;
+    sort?: string;
   }): Promise<TransactionListResult> => {
-    const { data } = await apiClient.get<ApiResponse<Transaction[]>>('/transactions', { params });
+    const { startDate, endDate, ...rest } = params || {};
+    const queryParams = {
+      ...rest,
+      start_date: startDate,
+      end_date: endDate,
+    };
+    const { data } = await apiClient.get<ApiResponse<Transaction[]>>('/transactions', { params: queryParams });
     return { transactions: data.data || [], meta: data.meta };
   },
 

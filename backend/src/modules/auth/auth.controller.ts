@@ -35,6 +35,15 @@ export class AuthController {
     }
   }
 
+  static async subscription(req: Request, res: Response, next: NextFunction) {
+    try {
+      const subscription = await AuthService.subscription(req.user!.user_id);
+      return sendSuccess(res, subscription);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async registerTenant(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await AuthService.registerTenant(req.body);

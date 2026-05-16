@@ -1,6 +1,6 @@
-# Backend - STNK Bureau Service Management SaaS
+# Backend - SatuJasa Service Management SaaS
 
-Node.js + Express + PostgreSQL backend for a multi-tenant STNK Bureau Service Management SaaS Platform.
+Node.js + Express + PostgreSQL backend for a multi-tenant SatuJasa Service Management SaaS Platform.
 
 This backend powers:
 

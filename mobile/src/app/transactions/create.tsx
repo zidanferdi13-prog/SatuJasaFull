@@ -48,11 +48,11 @@ const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep'
 
 const STNK_FEE_CATEGORIES: { key: StnkFeeKey; label: string }[] = [
   { key: 'pkbPokok', label: 'PKB Pokok' },
-  { key: 'pkbDenda', label: 'PKB Denda' },
+  // { key: 'pkbDenda', label: 'PKB Denda' },
   { key: 'opsenPkbPokok', label: 'Opsen PKB Pokok' },
-  { key: 'opsenPkbDenda', label: 'Opsen PKB Denda' },
+  // { key: 'opsenPkbDenda', label: 'Opsen PKB Denda' },
   { key: 'swdklljPokok', label: 'SWDKLLJ Pokok' },
-  { key: 'swdklljDenda', label: 'SWDKLLJ Denda' },
+  // { key: 'swdklljDenda', label: 'SWDKLLJ Denda' },
   { key: 'pnbpStnk', label: 'PNBP STNK' },
   { key: 'pnbpTnkb', label: 'PNBP TNKB' },
 ];
@@ -196,6 +196,21 @@ function DatePickerModal({
 
 const STEPS = ['Pelanggan', 'Kendaraan', 'Ringkasan'];
 
+function StepHeader({ step, title, subtitle }: { step: number; title: string; subtitle: string }) {
+  return (
+    <View style={styles.sectionHeaderCard}>
+      <View style={styles.sectionStepBadge}>
+        <Text style={styles.sectionStepText}>{step}</Text>
+      </View>
+      <View style={styles.sectionHeaderText}>
+        <Text style={styles.stepTitle}>{title}</Text>
+        <Text style={styles.stepSubtitle}>{subtitle}</Text>
+      </View>
+    </View>
+  );
+}
+
+
 export default function CreateTransactionScreen() {
   const router = useRouter();
   const createMutation = useCreateTransaction();
@@ -212,7 +227,9 @@ export default function CreateTransactionScreen() {
   const [notes, setNotes] = useState('');
   const [showVehiclePicker, setShowVehiclePicker] = useState(false);
   const [addingVehicle, setAddingVehicle] = useState<Vehicle | null>(null);
+  const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
   const [selectedServiceType, setSelectedServiceType] = useState<ServiceType | null>(null);
+  const [showServiceDropdown, setShowServiceDropdown] = useState(false);
   const [vehicleFees, setVehicleFees] = useState<StnkFeeInputs>(DEFAULT_STNK_FEES);
 
   // Inline add customer
@@ -275,7 +292,9 @@ export default function CreateTransactionScreen() {
       setSelectedItems([...selectedItems, newItem]);
     }
     setAddingVehicle(null);
+    setShowVehicleDropdown(false);
     setSelectedServiceType(null);
+    setShowServiceDropdown(false);
     setVehicleFees(DEFAULT_STNK_FEES);
     setShowVehiclePicker(false);
   };
@@ -353,8 +372,9 @@ export default function CreateTransactionScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Step indicator */}
-      <View style={styles.stepBar}>
+
+
+      <View style={[styles.stepBar, { marginTop: Spacing.lg }]}>
         {STEPS.map((s, i) => (
           <View key={s} style={styles.stepItemWrapper}>
             <View style={[styles.stepDot, i <= step && styles.stepDotActive]}>
@@ -368,8 +388,8 @@ export default function CreateTransactionScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* STEP 0: Select Customer */}
         {step === 0 && (
-          <View>
-            <Text style={styles.stepTitle}>Pilih Pelanggan</Text>
+          <View style={styles.stepCard}>
+            <StepHeader step={1} title="Pilih Pelanggan" subtitle="Cari pelanggan lama atau tambahkan pelanggan baru." />
             {selectedCustomer ? (
               <View style={[styles.selectedCard, Shadow.sm]}>
                 <View style={styles.selectedInfo}>
@@ -447,8 +467,8 @@ export default function CreateTransactionScreen() {
 
         {/* STEP 1: Add Vehicles */}
         {step === 1 && (
-          <View>
-            <Text style={styles.stepTitle}>Tambah Kendaraan</Text>
+          <View style={styles.stepCard}>
+            <StepHeader step={2} title="Detail Kendaraan" subtitle="Pilih kendaraan, layanan, lalu isi estimasi biaya STNK." />
             {selectedItems.map((item) => (
               <View key={item.vehicleId} style={[styles.itemCard, Shadow.sm]}>
                 <View style={styles.itemInfo}>
@@ -471,86 +491,153 @@ export default function CreateTransactionScreen() {
             ) : (
               <View style={[styles.pickerCard, Shadow.sm]}>
                 <Text style={styles.pickerTitle}>Pilih Kendaraan</Text>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Cari nomor plat..."
-                  value={vehicleSearch}
-                  onChangeText={setVehicleSearch}
-                />
-                {vehicles?.map((v) => (
-                  <Pressable
-                    key={v.id}
-                    style={[styles.listItem, addingVehicle?.id === v.id && styles.listItemSelected]}
-                    onPress={() => { setAddingVehicle(v); setShowAddVehicle(false); }}
-                  >
-                    <Text style={styles.listItemName}>{v.plateNumber}</Text>
-                    <Text style={styles.listItemSub}>{[v.brand, v.model].filter(Boolean).join(' ')}</Text>
-                  </Pressable>
-                ))}
-
-                {!showAddVehicle ? (
-                  <Pressable
-                    style={[styles.addItemBtn, { marginTop: Spacing.xs }]}
-                    onPress={() => { setShowAddVehicle(true); setAddingVehicle(null); }}
-                  >
-                    <Ionicons name="car-outline" size={18} color={Colors.primary} />
-                    <Text style={styles.addItemBtnText}>Tambah Kendaraan Baru</Text>
-                  </Pressable>
-                ) : (
-                  <View style={{ marginTop: Spacing.sm }}>
-                    <Text style={styles.pickerTitle}>Data Kendaraan Baru</Text>
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Nomor plat * (cth: B1234ABC)"
-                      value={newVehiclePlate}
-                      onChangeText={setNewVehiclePlate}
-                      autoCapitalize="characters"
-                    />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Merek (opsional, cth: Honda)"
-                      value={newVehicleBrand}
-                      onChangeText={setNewVehicleBrand}
-                      autoCapitalize="words"
-                    />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Model (opsional, cth: Beat)"
-                      value={newVehicleModel}
-                      onChangeText={setNewVehicleModel}
-                    />
-                    <View style={styles.pickerActions}>
-                      <Pressable
-                        style={styles.cancelBtn}
-                        onPress={() => { setShowAddVehicle(false); setNewVehiclePlate(''); setNewVehicleBrand(''); setNewVehicleModel(''); }}
-                      >
-                        <Text style={styles.cancelBtnText}>Batal</Text>
-                      </Pressable>
-                      <Pressable
-                        style={[styles.confirmBtn, (!newVehiclePlate.trim() || createVehicleMutation.isPending) && styles.btnDisabled]}
-                        onPress={handleAddVehicle}
-                        disabled={!newVehiclePlate.trim() || createVehicleMutation.isPending}
-                      >
-                        {createVehicleMutation.isPending
-                          ? <ActivityIndicator color="#fff" size="small" />
-                          : <Text style={styles.confirmBtnText}>Simpan</Text>}
-                      </Pressable>
+                {addingVehicle ? (
+                  <View style={styles.selectedVehicleCard}>
+                    <View style={styles.selectedVehicleIcon}>
+                      <Ionicons name="car-outline" size={22} color={Colors.primaryDark} />
                     </View>
+                    <View style={styles.selectedVehicleInfo}>
+                      <Text style={styles.selectedVehiclePlate}>{addingVehicle.plateNumber}</Text>
+                      <Text style={styles.selectedVehicleMeta}>{[addingVehicle.brand, addingVehicle.model].filter(Boolean).join(' ') || 'Kendaraan terpilih'}</Text>
+                    </View>
+                    <Pressable
+                      style={styles.changeVehicleBtn}
+                      onPress={() => {
+                        setAddingVehicle(null);
+                        setSelectedServiceType(null);
+                        setShowServiceDropdown(false);
+                        setShowVehicleDropdown(true);
+                      }}
+                    >
+                      <Text style={styles.changeVehicleText}>Ganti</Text>
+                    </Pressable>
                   </View>
+                ) : (
+                  <>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Cari nomor plat..."
+                      value={vehicleSearch}
+                      onChangeText={(value) => {
+                        setVehicleSearch(value);
+                        setShowVehicleDropdown(true);
+                      }}
+                    />
+                    <Pressable
+                      style={styles.dropdownButton}
+                      onPress={() => setShowVehicleDropdown((visible) => !visible)}
+                    >
+                      <Text style={styles.dropdownPlaceholder}>Pilih kendaraan</Text>
+                      <Ionicons
+                        name={showVehicleDropdown ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={Colors.textSecondary}
+                      />
+                    </Pressable>
+                    {showVehicleDropdown && (
+                      <View style={styles.dropdownList}>
+                        {vehicles?.map((v) => (
+                          <Pressable
+                            key={v.id}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              setAddingVehicle(v);
+                              setShowAddVehicle(false);
+                              setShowVehicleDropdown(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{v.plateNumber}</Text>
+                            <Text style={styles.dropdownItemSubText}>{[v.brand, v.model].filter(Boolean).join(' ') || 'Tanpa detail kendaraan'}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
+
+                    {!showAddVehicle ? (
+                      <Pressable
+                        style={[styles.addItemBtn, { marginTop: Spacing.xs }]}
+                        onPress={() => { setShowAddVehicle(true); setAddingVehicle(null); }}
+                      >
+                        <Ionicons name="car-outline" size={18} color={Colors.primary} />
+                        <Text style={styles.addItemBtnText}>Tambah Kendaraan Baru</Text>
+                      </Pressable>
+                    ) : (
+                      <View style={{ marginTop: Spacing.sm }}>
+                        <Text style={styles.pickerTitle}>Data Kendaraan Baru</Text>
+                        <TextInput
+                          style={styles.searchInput}
+                          placeholder="Nomor plat * (cth: B1234ABC)"
+                          value={newVehiclePlate}
+                          onChangeText={setNewVehiclePlate}
+                          autoCapitalize="characters"
+                        />
+                        <TextInput
+                          style={styles.searchInput}
+                          placeholder="Merek (opsional, cth: Honda)"
+                          value={newVehicleBrand}
+                          onChangeText={setNewVehicleBrand}
+                          autoCapitalize="words"
+                        />
+                        <TextInput
+                          style={styles.searchInput}
+                          placeholder="Model (opsional, cth: Beat)"
+                          value={newVehicleModel}
+                          onChangeText={setNewVehicleModel}
+                        />
+                        <View style={styles.pickerActions}>
+                          <Pressable
+                            style={styles.cancelBtn}
+                            onPress={() => { setShowAddVehicle(false); setNewVehiclePlate(''); setNewVehicleBrand(''); setNewVehicleModel(''); }}
+                          >
+                            <Text style={styles.cancelBtnText}>Batal</Text>
+                          </Pressable>
+                          <Pressable
+                            style={[styles.confirmBtn, (!newVehiclePlate.trim() || createVehicleMutation.isPending) && styles.btnDisabled]}
+                            onPress={handleAddVehicle}
+                            disabled={!newVehiclePlate.trim() || createVehicleMutation.isPending}
+                          >
+                            {createVehicleMutation.isPending
+                              ? <ActivityIndicator color="#fff" size="small" />
+                              : <Text style={styles.confirmBtnText}>Simpan</Text>}
+                          </Pressable>
+                        </View>
+                      </View>
+                    )}
+                  </>
                 )}
 
                 {addingVehicle && (
                   <>
                     <Text style={[styles.pickerTitle, { marginTop: Spacing.md }]}>Jenis Layanan</Text>
-                    {serviceTypes?.map((st) => (
-                      <Pressable
-                        key={st.id}
-                        style={[styles.listItem, selectedServiceType?.id === st.id && styles.listItemSelected]}
-                        onPress={() => setSelectedServiceType(st)}
-                      >
-                        <Text style={styles.listItemName}>{st.name}</Text>
-                      </Pressable>
-                    ))}
+                    <Pressable
+                      style={styles.dropdownButton}
+                      onPress={() => setShowServiceDropdown((visible) => !visible)}
+                    >
+                      <Text style={selectedServiceType ? styles.dropdownText : styles.dropdownPlaceholder}>
+                        {selectedServiceType?.name || 'Pilih jenis layanan'}
+                      </Text>
+                      <Ionicons
+                        name={showServiceDropdown ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={Colors.textSecondary}
+                      />
+                    </Pressable>
+                    {showServiceDropdown && (
+                      <View style={styles.dropdownList}>
+                        {serviceTypes?.map((st) => (
+                          <Pressable
+                            key={st.id}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              setSelectedServiceType(st);
+                              setShowServiceDropdown(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{st.name}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
 
                     <Text style={[styles.pickerTitle, { marginTop: Spacing.md }]}>Rincian Biaya STNK</Text>
                     <Text style={styles.feeHelpText}>Isi biaya yang diperlukan, biarkan 0 jika tidak ada.</Text>
@@ -586,6 +673,7 @@ export default function CreateTransactionScreen() {
                         setShowVehiclePicker(false);
                         setAddingVehicle(null);
                         setSelectedServiceType(null);
+                        setShowServiceDropdown(false);
                         setVehicleFees(DEFAULT_STNK_FEES);
                       }}>
                         <Text style={styles.cancelBtnText}>Batal</Text>
@@ -618,8 +706,8 @@ export default function CreateTransactionScreen() {
 
         {/* STEP 2: Summary & Submit */}
         {step === 2 && (
-          <View>
-            <Text style={styles.stepTitle}>Ringkasan Transaksi</Text>
+          <View style={styles.stepCard}>
+            <StepHeader step={3} title="Ringkasan Transaksi" subtitle="Cek data, DP, target selesai, dan catatan sebelum disimpan." />
             <View style={[styles.card, Shadow.sm]}>
               <Text style={styles.sectionTitle}>Pelanggan</Text>
               <Text style={styles.cardValue}>{selectedCustomer?.name}</Text>
@@ -726,27 +814,60 @@ export default function CreateTransactionScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing['2xl'],
+    paddingBottom: Spacing.md,
+  },
+  headerTitle: { fontSize: 26, lineHeight: 32, fontWeight: '900', color: Colors.text },
+  headerSubtitle: { fontSize: 14, lineHeight: 20, color: Colors.textSecondary, marginTop: Spacing.xs },
   stepBar: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    padding: Spacing.md,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
   },
-  stepItemWrapper: { alignItems: 'center', gap: 4 },
+  stepItemWrapper: { flex: 1, alignItems: 'center', gap: 6 },
   stepDot: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: Colors.border, alignItems: 'center', justifyContent: 'center',
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    alignItems: 'center', justifyContent: 'center',
   },
-  stepDotActive: { backgroundColor: Colors.primary },
-  stepDotText: { fontSize: 12, fontWeight: '700', color: Colors.textLight },
+  stepDotActive: { backgroundColor: Colors.primaryDark, borderColor: Colors.primaryDark },
+  stepDotText: { fontSize: 12, fontWeight: '800', color: Colors.textLight },
   stepDotTextActive: { color: '#fff' },
-  stepLabel: { ...Typography.caption, color: Colors.textSecondary },
-  stepLabelActive: { color: Colors.primary, fontWeight: '700' },
-  scrollContent: { padding: Spacing.md, paddingBottom: 80 },
-  stepTitle: { ...Typography.h3, color: Colors.text, marginBottom: Spacing.md },
+  stepLabel: { ...Typography.caption, color: Colors.textSecondary, textAlign: 'center' },
+  stepLabelActive: { color: Colors.primaryDark, fontWeight: '800' },
+  scrollContent: { padding: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 96 },
+  stepCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    ...Shadow.sm,
+  },
+  sectionHeaderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  sectionStepBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primaryDark,
+  },
+  sectionStepText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  sectionHeaderText: { flex: 1 },
+  stepTitle: { ...Typography.h3, color: Colors.text },
+  stepSubtitle: { ...Typography.bodySmall, color: Colors.textSecondary, marginTop: 2 },
   selectedCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
@@ -760,10 +881,10 @@ const styles = StyleSheet.create({
   selectedSub: { ...Typography.bodySmall, color: Colors.textSecondary },
   searchInput: {
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
+    borderColor: '#C3C6D6',
+    borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
+    paddingVertical: 13,
     fontSize: 14,
     color: Colors.text,
     backgroundColor: Colors.surface,
@@ -771,22 +892,24 @@ const styles = StyleSheet.create({
   },
   listItem: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.md,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#C3C6D6',
   },
-  listItemSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '10' },
+  listItemSelected: { borderColor: Colors.primaryDark, borderWidth: 2, backgroundColor: Colors.primaryLight },
   listItemName: { ...Typography.body, fontWeight: '600', color: Colors.text },
   listItemSub: { ...Typography.bodySmall, color: Colors.textSecondary },
   itemCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceMuted,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
   },
   itemInfo: { flex: 1 },
   itemPlate: { ...Typography.body, fontWeight: '700', color: Colors.text },
@@ -799,20 +922,85 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.sm,
     borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 12,
+    borderColor: Colors.primaryDark,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: 14,
     marginVertical: Spacing.sm,
     borderStyle: 'dashed',
+    backgroundColor: Colors.primaryLight,
   },
-  addItemBtnText: { color: Colors.primary, fontWeight: '700', fontSize: 15 },
+  addItemBtnText: { color: Colors.primaryDark, fontWeight: '800', fontSize: 15 },
   pickerCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.surfaceMuted,
+    borderRadius: BorderRadius.xl,
     padding: Spacing.md,
     marginTop: Spacing.sm,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
   },
   pickerTitle: { ...Typography.h4, color: Colors.text, marginBottom: Spacing.sm },
+  dropdownButton: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
+  },
+  dropdownText: { ...Typography.body, color: Colors.text, fontWeight: '600' },
+  dropdownSubText: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
+  dropdownPlaceholder: { ...Typography.body, color: Colors.textLight },
+  dropdownList: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: Spacing.sm,
+  },
+  dropdownItem: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.divider,
+  },
+  dropdownItemText: { ...Typography.body, color: Colors.text, fontWeight: '600' },
+  dropdownItemSubText: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
+  selectedVehicleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.primaryDark,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  selectedVehicleIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primaryLight,
+  },
+  selectedVehicleInfo: { flex: 1 },
+  selectedVehiclePlate: { ...Typography.body, color: Colors.text, fontWeight: '900' },
+  selectedVehicleMeta: { ...Typography.bodySmall, color: Colors.textSecondary, marginTop: 2 },
+  changeVehicleBtn: {
+    borderWidth: 1,
+    borderColor: Colors.primaryDark,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    backgroundColor: Colors.primaryLight,
+  },
+  changeVehicleText: { color: Colors.primaryDark, fontSize: 12, fontWeight: '800' },
   feeHelpText: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.sm },
   feeRow: {
     flexDirection: 'row',
@@ -867,16 +1055,18 @@ const styles = StyleSheet.create({
   },
   confirmBtnText: { color: '#fff', fontWeight: '700' },
   totalCard: {
-    backgroundColor: Colors.primary + '15',
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
+    backgroundColor: Colors.primaryDark,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: Spacing.sm,
+    alignItems: 'center',
+    marginTop: Spacing.md,
+    ...Shadow.md,
   },
-  totalLabel: { ...Typography.body, color: Colors.primary, fontWeight: '600' },
-  totalMeta: { ...Typography.caption, color: Colors.textSecondary, marginTop: 2 },
-  totalValue: { ...Typography.h3, color: Colors.primary },
+  totalLabel: { ...Typography.body, color: 'rgba(255,255,255,0.82)', fontWeight: '700' },
+  totalMeta: { ...Typography.caption, color: 'rgba(255,255,255,0.68)', marginTop: 2 },
+  totalValue: { ...Typography.h3, color: '#fff' },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
@@ -906,14 +1096,14 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: '#C3C6D6',
   },
   backBtn: {
     flex: 1,
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 14,
+    borderColor: '#C3C6D6',
+    borderRadius: BorderRadius.lg,
+    paddingVertical: 15,
     alignItems: 'center',
   },
   backBtnText: { color: Colors.textSecondary, fontWeight: '600' },
@@ -923,9 +1113,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 14,
+    backgroundColor: Colors.primaryDark,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: 15,
   },
   nextBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   btnDisabled: { opacity: 0.5 },

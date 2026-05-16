@@ -10,12 +10,17 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Linking,
+  Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../modules/auth/services/auth.service';
-import { Colors, Spacing, Typography } from '../../theme';
+import { Colors, Spacing, Shadow, BorderRadius } from '../../theme';
 import { getErrorMessage } from '../../shared/services/api-error';
+
+const SUPPORT_WHATSAPP_URL = 'https://wa.me/6281319535441';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -51,41 +56,61 @@ export default function LoginScreen() {
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.logo}>STNK Bureau</Text>
-          <Text style={styles.tagline}>Aplikasi Operasional Biro Jasa</Text>
+        <View style={styles.heroGlow} />
+
+        <View style={styles.headerCard}>
+          <View style={styles.logoWrap}>
+            <Image source={require('../../../assets/icon.png')} style={styles.logoImage} />
+          </View>
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.logoText}>SatuJasa</Text>
+            <Text style={styles.tagline}>Operasional biro jasa STNK dalam satu aplikasi.</Text>
+          </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.title}>Masuk ke Akun</Text>
+          <View style={styles.cardHeader}>
+            <Text style={styles.kicker}>Welcome Back</Text>
+            <Text style={styles.title}>Masuk ke Akun</Text>
+            <Text style={styles.subtitle}>Kelola transaksi, tracking, pelanggan, dan layanan dengan cepat.</Text>
+          </View>
 
           <View style={styles.field}>
             <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="admin@example.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!isLoading}
-              returnKeyType="next"
-            />
+            <View style={styles.inputWrap}>
+              <Ionicons name="mail-outline" size={19} color={Colors.textLight} />
+              <TextInput
+                style={styles.input}
+                placeholder="admin@example.com"
+                placeholderTextColor={Colors.textLight}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!isLoading}
+                returnKeyType="next"
+              />
+            </View>
           </View>
 
           <View style={styles.field}>
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Masukkan password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              editable={!isLoading}
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
+            <View style={styles.inputWrap}>
+              <Ionicons name="lock-closed-outline" size={19} color={Colors.textLight} />
+              <TextInput
+                style={styles.input}
+                placeholder="Masukkan password"
+                placeholderTextColor={Colors.textLight}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+              />
+            </View>
           </View>
 
           <Pressable
@@ -96,14 +121,21 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Masuk</Text>
+              <>
+                <Text style={styles.buttonText}>Masuk</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </>
             )}
           </Pressable>
         </View>
 
-        <Text style={styles.footer}>
-          Butuh bantuan? Hubungi admin platform Anda.
-        </Text>
+        <View style={styles.helpBox}>
+          <Text style={styles.helpText}>Need Help?</Text>
+          <Pressable style={styles.helpLinkWrap} onPress={() => Linking.openURL(SUPPORT_WHATSAPP_URL)}>
+            <Ionicons name="logo-whatsapp" size={15} color={Colors.primaryDark} />
+            <Text style={styles.helpLink}>Contact Me</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -116,62 +148,126 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: Spacing.xl,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: Spacing['3xl'],
+  heroGlow: {
+    position: 'absolute',
+    top: -140,
+    alignSelf: 'center',
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: Colors.primaryLight,
   },
-  logo: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.5,
+  headerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.xl,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    backgroundColor: Colors.primaryDark,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    ...Shadow.md,
+  },
+  logoWrap: {
+    width: 66,
+    height: 66,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.26)',
+  },
+  logoImage: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+  },
+  headerTextWrap: { flex: 1 },
+  logoText: {
+    fontSize: 30,
+    lineHeight: 36,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: -0.8,
   },
   tagline: {
-    ...Typography.body,
-    color: Colors.textSecondary,
     marginTop: Spacing.xs,
+    fontSize: 13,
+    lineHeight: 19,
+    color: 'rgba(255,255,255,0.78)',
+    fontWeight: '600',
   },
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: 16,
+    borderRadius: BorderRadius.xl,
     padding: Spacing['2xl'],
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    ...Shadow.md,
+  },
+  cardHeader: { marginBottom: Spacing.xl },
+  kicker: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: Colors.primaryDark,
   },
   title: {
-    ...Typography.h3,
+    marginTop: Spacing.xs,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '900',
     color: Colors.text,
-    marginBottom: Spacing.xl,
-    textAlign: 'center',
+    letterSpacing: -0.7,
+  },
+  subtitle: {
+    marginTop: Spacing.sm,
+    fontSize: 14,
+    lineHeight: 21,
+    color: Colors.textSecondary,
+    fontWeight: '600',
   },
   field: {
     marginBottom: Spacing.lg,
   },
   label: {
-    ...Typography.bodySmall,
+    fontSize: 12,
     color: Colors.textSecondary,
     marginBottom: Spacing.xs,
-    fontWeight: '500',
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: '#C3C6D6',
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    backgroundColor: Colors.surfaceMuted,
   },
   input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-    fontSize: 16,
+    flex: 1,
+    paddingVertical: 15,
+    fontSize: 15,
     color: Colors.text,
-    backgroundColor: Colors.background,
+    fontWeight: '600',
   },
   button: {
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.primaryDark,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: 16,
     marginTop: Spacing.sm,
+    ...Shadow.sm,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -179,12 +275,34 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '900',
   },
-  footer: {
-    ...Typography.bodySmall,
+  helpBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.xl,
+  },
+  helpText: {
+    fontSize: 13,
     color: Colors.textLight,
     textAlign: 'center',
-    marginTop: Spacing.xl,
+    fontWeight: '700',
+  },
+  helpLinkWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primaryLight,
+  },
+  helpLink: {
+    fontSize: 13,
+    color: Colors.primaryDark,
+    fontWeight: '900',
+    textAlign: 'center',
   },
 });

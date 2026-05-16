@@ -11,6 +11,7 @@ router.post('/login', validate(loginSchema), AuthController.login);
 router.post('/refresh', validate(refreshTokenSchema), AuthController.refresh);
 router.post('/logout', authMiddleware, AuthController.logout);
 router.get('/me', authMiddleware, AuthController.me);
+router.get('/subscription', authMiddleware, AuthController.subscription);
 
 // Super Admin only: register a new tenant
 router.post(

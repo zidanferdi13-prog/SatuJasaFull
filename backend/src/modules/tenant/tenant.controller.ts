@@ -17,6 +17,13 @@ export class TenantController {
     } catch (err) { next(err); }
   }
 
+  static async getMe(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tenant = await TenantService.findOwnTenant(req.user!.tenant_id);
+      return sendSuccess(res, tenant);
+    } catch (err) { next(err); }
+  }
+
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
       // Delegates to auth service's registerTenant
