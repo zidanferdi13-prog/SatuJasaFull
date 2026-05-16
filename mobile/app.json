@@ -2,6 +2,7 @@
   "expo": {
     "name": "STNK Bureau",
     "slug": "stnk-bureau",
+    "scheme": "stnkbureau",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTabletMode": true,
       "bundleIdentifier": "com.stnkbureau.app"
@@ -32,7 +35,8 @@
         {
           "cameraPermission": "Allow access to camera"
         }
-      ]
+      ],
+      "expo-router"
     ]
   }
 }

@@ -11,16 +11,16 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTransaction, useTransactionPayments } from '../../modules/transactions/hooks/useTransactions';
+import { useTransaction, useTransactionPayments } from '../../../modules/transactions/hooks/useTransactions';
 import {
   STATUS_COLORS,
   STATUS_LABELS,
   STATUS_TRANSITION,
   TRACKING_URL,
   PAYMENT_TYPE_LABELS,
-} from '../../shared/constants';
-import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../theme';
-import { Payment, TransactionItem } from '../../shared/types';
+} from '../../../shared/constants';
+import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../../theme';
+import { Payment, TransactionItem } from '../../../shared/types';
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (

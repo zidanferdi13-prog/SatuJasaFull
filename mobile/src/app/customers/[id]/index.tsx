@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useCustomer } from '../../modules/customers/hooks/useCustomers';
-import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../theme';
+import { useCustomer } from '../../../modules/customers/hooks/useCustomers';
+import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../../theme';
 
 export default function CustomerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

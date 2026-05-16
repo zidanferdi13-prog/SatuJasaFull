@@ -19,7 +19,9 @@ export function AppProvider({ children }: AppProviderProps) {
     setSubscriptionExpiredCallback(() => setSubscriptionExpired(true));
 
     // Hydrate persisted auth state
-    hydrate();
+    hydrate().catch(() => {
+      // ensure AuthGuard can still redirect even if storage fails
+    });
   }, []);
 
   return (

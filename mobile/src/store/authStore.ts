@@ -55,19 +55,23 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   hydrate: async () => {
-    const [user, accessToken, refreshToken, selectedBranch] = await Promise.all([
-      storage.getUser<User>(),
-      storage.getAccessToken(),
-      storage.getRefreshToken(),
-      storage.getSelectedBranch<Branch>(),
-    ]);
-    set({
-      user: user || null,
-      accessToken: accessToken || null,
-      refreshToken: refreshToken || null,
-      selectedBranch: selectedBranch || null,
-      isHydrated: true,
-    });
+    try {
+      const [user, accessToken, refreshToken, selectedBranch] = await Promise.all([
+        storage.getUser<User>(),
+        storage.getAccessToken(),
+        storage.getRefreshToken(),
+        storage.getSelectedBranch<Branch>(),
+      ]);
+      set({
+        user: user || null,
+        accessToken: accessToken || null,
+        refreshToken: refreshToken || null,
+        selectedBranch: selectedBranch || null,
+        isHydrated: true,
+      });
+    } catch {
+      set({ isHydrated: true });
+    }
   },
 }));
 

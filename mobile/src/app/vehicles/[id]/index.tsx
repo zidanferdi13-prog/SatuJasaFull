@@ -4,8 +4,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useVehicle } from '../../modules/vehicles/hooks/useVehicles';
-import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../theme';
+import { useVehicle } from '../../../modules/vehicles/hooks/useVehicles';
+import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../../theme';
 
 function InfoRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null;

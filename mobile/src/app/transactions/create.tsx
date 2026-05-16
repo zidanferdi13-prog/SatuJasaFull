@@ -9,12 +9,13 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCreateTransaction } from '../../modules/transactions/hooks/useTransactions';
-import { useCustomers } from '../../modules/customers/hooks/useCustomers';
-import { useVehicles } from '../../modules/vehicles/hooks/useVehicles';
+import { useCustomers, useCreateCustomer } from '../../modules/customers/hooks/useCustomers';
+import { useVehicles, useCreateVehicle } from '../../modules/vehicles/hooks/useVehicles';
 import { useServiceTypes } from '../../modules/settings/hooks/useSettings';
 import { useAuthStore } from '../../store/authStore';
 import { Customer, Vehicle, ServiceType } from '../../shared/types';
@@ -29,12 +30,132 @@ interface TransactionItemInput {
   estimatedPrice: string;
 }
 
+const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+const dpStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: Spacing.lg,
+    paddingBottom: 32,
+  },
+  title: { ...Typography.h3, color: Colors.text, textAlign: 'center', marginBottom: Spacing.lg },
+  pickerRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: Spacing.lg },
+  stepperCol: { alignItems: 'center', flex: 1 },
+  stepperLabel: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.sm },
+  stepperBtn: { padding: Spacing.sm },
+  stepperValueBox: {
+    width: 72,
+    height: 44,
+    backgroundColor: Colors.primary + '18',
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  stepperValue: { ...Typography.h4, color: Colors.primary, fontWeight: '700' },
+  dpActions: { flexDirection: 'row', gap: Spacing.sm },
+  dpCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  dpCancelText: { color: Colors.textSecondary, fontWeight: '600' },
+  dpConfirmBtn: {
+    flex: 2,
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  dpConfirmText: { color: '#fff', fontWeight: '700' },
+});
+
+function StepperCol({
+  label, value, onPrev, onNext,
+}: { label: string; value: string; onPrev: () => void; onNext: () => void }) {
+  return (
+    <View style={dpStyles.stepperCol}>
+      <Text style={dpStyles.stepperLabel}>{label}</Text>
+      <Pressable style={dpStyles.stepperBtn} onPress={onNext}>
+        <Ionicons name="chevron-up" size={22} color={Colors.primary} />
+      </Pressable>
+      <View style={dpStyles.stepperValueBox}>
+        <Text style={dpStyles.stepperValue}>{value}</Text>
+      </View>
+      <Pressable style={dpStyles.stepperBtn} onPress={onPrev}>
+        <Ionicons name="chevron-down" size={22} color={Colors.primary} />
+      </Pressable>
+    </View>
+  );
+}
+
+function DatePickerModal({
+  visible, value, onConfirm, onCancel,
+}: { visible: boolean; value: string; onConfirm: (date: string) => void; onCancel: () => void }) {
+  const today = new Date();
+  const parse = () => {
+    if (value) {
+      const p = value.split('-').map(Number);
+      if (p[0] && p[1] && p[2]) return { y: p[0], m: p[1], d: p[2] };
+    }
+    return { y: today.getFullYear(), m: today.getMonth() + 1, d: today.getDate() };
+  };
+  const init = parse();
+  const [selDay, setSelDay] = useState(init.d);
+  const [selMonth, setSelMonth] = useState(init.m);
+  const [selYear, setSelYear] = useState(init.y);
+
+  const minYear = today.getFullYear();
+  const maxYear = today.getFullYear() + 5;
+  const maxDay = new Date(selYear, selMonth, 0).getDate();
+
+  const adjDay = (d: number) => setSelDay(v => { const n = v + d; return n < 1 ? maxDay : n > maxDay ? 1 : n; });
+  const adjMonth = (d: number) => setSelMonth(v => { const n = v + d; return n < 1 ? 12 : n > 12 ? 1 : n; });
+  const adjYear = (d: number) => setSelYear(v => { const n = v + d; return n < minYear ? minYear : n > maxYear ? maxYear : n; });
+
+  const handleConfirm = () => {
+    const day = Math.min(selDay, new Date(selYear, selMonth, 0).getDate());
+    onConfirm(`${selYear}-${String(selMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
+      <View style={dpStyles.overlay}>
+        <View style={dpStyles.sheet}>
+          <Text style={dpStyles.title}>Pilih Target Selesai</Text>
+          <View style={dpStyles.pickerRow}>
+            <StepperCol label="Hari" value={String(selDay).padStart(2, '0')} onPrev={() => adjDay(-1)} onNext={() => adjDay(1)} />
+            <StepperCol label="Bulan" value={MONTHS_ID[selMonth - 1]} onPrev={() => adjMonth(-1)} onNext={() => adjMonth(1)} />
+            <StepperCol label="Tahun" value={String(selYear)} onPrev={() => adjYear(-1)} onNext={() => adjYear(1)} />
+          </View>
+          <View style={dpStyles.dpActions}>
+            <Pressable style={dpStyles.dpCancelBtn} onPress={onCancel}>
+              <Text style={dpStyles.dpCancelText}>Batal</Text>
+            </Pressable>
+            <Pressable style={dpStyles.dpConfirmBtn} onPress={handleConfirm}>
+              <Text style={dpStyles.dpConfirmText}>Pilih Tanggal</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const STEPS = ['Pelanggan', 'Kendaraan', 'Ringkasan'];
 
 export default function CreateTransactionScreen() {
   const router = useRouter();
   const { selectedBranch } = useAuthStore();
   const createMutation = useCreateTransaction();
+  const createCustomerMutation = useCreateCustomer();
+  const createVehicleMutation = useCreateVehicle();
 
   const [step, setStep] = useState(0);
   const [customerSearch, setCustomerSearch] = useState('');
@@ -48,6 +169,20 @@ export default function CreateTransactionScreen() {
   const [addingVehicle, setAddingVehicle] = useState<Vehicle | null>(null);
   const [selectedServiceType, setSelectedServiceType] = useState<ServiceType | null>(null);
   const [vehiclePrice, setVehiclePrice] = useState('');
+
+  // Inline add customer
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+
+  // Inline add vehicle
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [newVehiclePlate, setNewVehiclePlate] = useState('');
+  const [newVehicleBrand, setNewVehicleBrand] = useState('');
+  const [newVehicleModel, setNewVehicleModel] = useState('');
+
+  // Date picker
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const { data: customers } = useCustomers(customerSearch.length >= 2 ? customerSearch : undefined);
   const { data: vehicles } = useVehicles({
@@ -88,6 +223,44 @@ export default function CreateTransactionScreen() {
 
   const removeItem = (vehicleId: string) => {
     setSelectedItems(selectedItems.filter((i) => i.vehicleId !== vehicleId));
+  };
+
+  const handleAddCustomer = async () => {
+    if (!newCustomerName.trim() || !newCustomerPhone.trim()) {
+      Alert.alert('Error', 'Nama dan nomor HP wajib diisi');
+      return;
+    }
+    try {
+      const customer = await createCustomerMutation.mutateAsync({
+        name: newCustomerName.trim(),
+        phone: newCustomerPhone.trim(),
+      });
+      setSelectedCustomer(customer);
+      setShowAddCustomer(false);
+      setNewCustomerName('');
+      setNewCustomerPhone('');
+    } catch (err) {
+      Alert.alert('Gagal', getErrorMessage(err));
+    }
+  };
+
+  const handleAddVehicle = async () => {
+    if (!newVehiclePlate.trim() || !selectedCustomer) return;
+    try {
+      const vehicle = await createVehicleMutation.mutateAsync({
+        customerId: selectedCustomer.id,
+        plateNumber: newVehiclePlate.trim().toUpperCase(),
+        brand: newVehicleBrand.trim() || undefined,
+        model: newVehicleModel.trim() || undefined,
+      });
+      setAddingVehicle(vehicle);
+      setShowAddVehicle(false);
+      setNewVehiclePlate('');
+      setNewVehicleBrand('');
+      setNewVehicleModel('');
+    } catch (err) {
+      Alert.alert('Gagal', getErrorMessage(err));
+    }
   };
 
   const handleSubmit = async () => {
@@ -165,6 +338,48 @@ export default function CreateTransactionScreen() {
                     <Text style={styles.listItemSub}>{c.phone}</Text>
                   </Pressable>
                 ))}
+
+                {!showAddCustomer ? (
+                  <Pressable style={styles.addItemBtn} onPress={() => setShowAddCustomer(true)}>
+                    <Ionicons name="person-add-outline" size={18} color={Colors.primary} />
+                    <Text style={styles.addItemBtnText}>Tambah Pelanggan Baru</Text>
+                  </Pressable>
+                ) : (
+                  <View style={[styles.pickerCard, Shadow.sm]}>
+                    <Text style={styles.pickerTitle}>Data Pelanggan Baru</Text>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Nama lengkap *"
+                      value={newCustomerName}
+                      onChangeText={setNewCustomerName}
+                      autoCapitalize="words"
+                    />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Nomor HP *"
+                      value={newCustomerPhone}
+                      onChangeText={setNewCustomerPhone}
+                      keyboardType="phone-pad"
+                    />
+                    <View style={styles.pickerActions}>
+                      <Pressable
+                        style={styles.cancelBtn}
+                        onPress={() => { setShowAddCustomer(false); setNewCustomerName(''); setNewCustomerPhone(''); }}
+                      >
+                        <Text style={styles.cancelBtnText}>Batal</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.confirmBtn, createCustomerMutation.isPending && styles.btnDisabled]}
+                        onPress={handleAddCustomer}
+                        disabled={createCustomerMutation.isPending}
+                      >
+                        {createCustomerMutation.isPending
+                          ? <ActivityIndicator color="#fff" size="small" />
+                          : <Text style={styles.confirmBtnText}>Simpan</Text>}
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -205,12 +420,63 @@ export default function CreateTransactionScreen() {
                   <Pressable
                     key={v.id}
                     style={[styles.listItem, addingVehicle?.id === v.id && styles.listItemSelected]}
-                    onPress={() => setAddingVehicle(v)}
+                    onPress={() => { setAddingVehicle(v); setShowAddVehicle(false); }}
                   >
                     <Text style={styles.listItemName}>{v.plateNumber}</Text>
                     <Text style={styles.listItemSub}>{[v.brand, v.model].filter(Boolean).join(' ')}</Text>
                   </Pressable>
                 ))}
+
+                {!showAddVehicle ? (
+                  <Pressable
+                    style={[styles.addItemBtn, { marginTop: Spacing.xs }]}
+                    onPress={() => { setShowAddVehicle(true); setAddingVehicle(null); }}
+                  >
+                    <Ionicons name="car-outline" size={18} color={Colors.primary} />
+                    <Text style={styles.addItemBtnText}>Tambah Kendaraan Baru</Text>
+                  </Pressable>
+                ) : (
+                  <View style={{ marginTop: Spacing.sm }}>
+                    <Text style={styles.pickerTitle}>Data Kendaraan Baru</Text>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Nomor plat * (cth: B1234ABC)"
+                      value={newVehiclePlate}
+                      onChangeText={setNewVehiclePlate}
+                      autoCapitalize="characters"
+                    />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Merek (opsional, cth: Honda)"
+                      value={newVehicleBrand}
+                      onChangeText={setNewVehicleBrand}
+                      autoCapitalize="words"
+                    />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Model (opsional, cth: Beat)"
+                      value={newVehicleModel}
+                      onChangeText={setNewVehicleModel}
+                    />
+                    <View style={styles.pickerActions}>
+                      <Pressable
+                        style={styles.cancelBtn}
+                        onPress={() => { setShowAddVehicle(false); setNewVehiclePlate(''); setNewVehicleBrand(''); setNewVehicleModel(''); }}
+                      >
+                        <Text style={styles.cancelBtnText}>Batal</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.confirmBtn, (!newVehiclePlate.trim() || createVehicleMutation.isPending) && styles.btnDisabled]}
+                        onPress={handleAddVehicle}
+                        disabled={!newVehiclePlate.trim() || createVehicleMutation.isPending}
+                      >
+                        {createVehicleMutation.isPending
+                          ? <ActivityIndicator color="#fff" size="small" />
+                          : <Text style={styles.confirmBtnText}>Simpan</Text>}
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
 
                 {addingVehicle && (
                   <>
@@ -297,12 +563,17 @@ export default function CreateTransactionScreen() {
                 keyboardType="numeric"
               />
               <Text style={[styles.label, { marginTop: Spacing.md }]}>Target Selesai (opsional)</Text>
-              <TextInput
-                style={styles.searchInput}
-                value={estimatedDate}
-                onChangeText={setEstimatedDate}
-                placeholder="YYYY-MM-DD"
-              />
+              <Pressable
+                style={[styles.searchInput, styles.datePickerBtn]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={estimatedDate ? styles.datePickerText : styles.datePickerPlaceholder}>
+                  {estimatedDate
+                    ? (() => { const [y, m, d] = estimatedDate.split('-'); return `${d} ${MONTHS_ID[parseInt(m) - 1]} ${y}`; })()
+                    : 'Pilih tanggal...'}
+                </Text>
+                <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />
+              </Pressable>
               <Text style={[styles.label, { marginTop: Spacing.md }]}>Catatan (opsional)</Text>
               <TextInput
                 style={[styles.searchInput, { height: 60, textAlignVertical: 'top' }]}
@@ -320,6 +591,13 @@ export default function CreateTransactionScreen() {
           </View>
         )}
       </ScrollView>
+
+      <DatePickerModal
+        visible={showDatePicker}
+        value={estimatedDate}
+        onConfirm={(date) => { setEstimatedDate(date); setShowDatePicker(false); }}
+        onCancel={() => setShowDatePicker(false)}
+      />
 
       {/* Bottom Nav */}
       <View style={styles.bottomNav}>
@@ -520,4 +798,12 @@ const styles = StyleSheet.create({
   },
   nextBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   btnDisabled: { opacity: 0.5 },
+  datePickerBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  datePickerText: { fontSize: 14, color: Colors.text },
+  datePickerPlaceholder: { fontSize: 14, color: '#aaa' },
 });
