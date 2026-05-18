@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useTransaction, useTransactionPayments } from '../../../modules/transactions/hooks/useTransactions';
+import { useTransaction, useTransactionPayments, useUpdateDocumentChecklist } from '../../../modules/transactions/hooks/useTransactions';
 import {
   STATUS_COLORS,
   STATUS_LABELS,
@@ -31,7 +31,11 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ItemRow({ item }: { item: TransactionItem }) {
+function ItemRow({ item, onToggleDocument, disabled }: {
+  item: TransactionItem;
+  onToggleDocument: (checklistId: string, isChecked: boolean) => void;
+  disabled: boolean;
+}) {
   return (
     <View style={styles.itemCard}>
       <View style={styles.itemRow}>
@@ -45,7 +49,7 @@ function ItemRow({ item }: { item: TransactionItem }) {
       </View>
       <View style={styles.itemRow}>
         <Text style={styles.itemLabel}>Estimasi</Text>
-        <Text style={styles.itemPrice}>Rp {(item.estimatedPrice || 0).toLocaleString('id-ID')}</Text>
+        <Text style={styles.itemPrice}>Rp {(item.price || item.estimatedPrice || 0).toLocaleString('id-ID')}</Text>
         {item.finalPrice !== undefined && (
           <>
             <Text style={styles.itemLabel}>Final</Text>
@@ -53,6 +57,33 @@ function ItemRow({ item }: { item: TransactionItem }) {
           </>
         )}
       </View>
+      {!!item.feeDetails?.length && (
+        <View style={styles.detailBox}>
+          <Text style={styles.detailTitle}>Rincian Biaya</Text>
+          {item.feeDetails.map((fee) => (
+            <View key={fee.id} style={styles.detailRow}>
+              <Text style={styles.detailLabel}>{fee.componentName}</Text>
+              <Text style={styles.detailValue}>Rp {Number(fee.amount || 0).toLocaleString('id-ID')}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+      {!!item.documentChecklist?.length && (
+        <View style={styles.detailBox}>
+          <Text style={styles.detailTitle}>Checklist Dokumen</Text>
+          {item.documentChecklist.map((doc) => (
+            <Pressable
+              key={doc.id}
+              style={styles.checklistRow}
+              onPress={() => onToggleDocument(doc.id, !doc.isChecked)}
+              disabled={disabled}
+            >
+              <Ionicons name={doc.isChecked ? 'checkbox' : 'square-outline'} size={20} color={doc.isChecked ? Colors.success : Colors.textSecondary} />
+              <Text style={[styles.detailLabel, doc.isChecked && styles.checklistCheckedLabel]}>{doc.documentName}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -93,6 +124,7 @@ export default function TransactionDetailScreen() {
   const router = useRouter();
   const { data: transaction, isLoading } = useTransaction(id);
   const { data: payments } = useTransactionPayments(id);
+  const updateChecklistMutation = useUpdateDocumentChecklist(id);
 
   if (isLoading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={Colors.primaryDark} /></View>;
@@ -105,6 +137,15 @@ export default function TransactionDetailScreen() {
   const nextStatus = STATUS_TRANSITION[transaction.status];
   const canFinalize = transaction.status === 'READY_TO_PICKUP' || transaction.status === 'COMPLETED';
   const canClose = transaction.status === 'COMPLETED';
+
+  const handleToggleDocument = (checklistId: string, isChecked: boolean) => {
+    updateChecklistMutation.mutate({
+      checklistId,
+      payload: { isChecked },
+    }, {
+      onError: (error) => Alert.alert('Gagal update checklist', String(error)),
+    });
+  };
 
   const handleShareTracking = async () => {
     const phone = formatWhatsAppPhone(transaction.customer?.phone);
@@ -210,7 +251,14 @@ export default function TransactionDetailScreen() {
       {transaction.items && transaction.items.length > 0 && (
         <View style={[styles.card, Shadow.sm]}>
           <Text style={styles.sectionTitle}>Kendaraan ({transaction.items.length})</Text>
-          {transaction.items.map((item) => <ItemRow key={item.id} item={item} />)}
+          {transaction.items.map((item) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              onToggleDocument={handleToggleDocument}
+              disabled={updateChecklistMutation.isPending}
+            />
+          ))}
         </View>
       )}
 
@@ -310,6 +358,13 @@ const styles = StyleSheet.create({
   itemService: { fontSize: 13, lineHeight: 18, color: Colors.textSecondary, fontWeight: '700' },
   itemLabel: { fontSize: 11, lineHeight: 15, color: Colors.textSecondary, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase' },
   itemPrice: { fontSize: 13, lineHeight: 18, color: Colors.text, fontWeight: '900', marginRight: Spacing.sm },
+  detailBox: { backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: Spacing.sm, gap: 6 },
+  detailTitle: { fontSize: 12, lineHeight: 16, color: Colors.text, fontWeight: '900' },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.sm },
+  detailLabel: { fontSize: 12, lineHeight: 17, color: Colors.textSecondary, flex: 1 },
+  detailValue: { fontSize: 12, lineHeight: 17, color: Colors.text, fontWeight: '800' },
+  checklistRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, paddingVertical: 6 },
+  checklistCheckedLabel: { color: Colors.text, fontWeight: '800' },
   paymentItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.divider },
   paymentType: { fontSize: 15, lineHeight: 21, fontWeight: '900', color: Colors.text },
   paymentDate: { fontSize: 11, lineHeight: 15, color: Colors.textLight, fontWeight: '700', marginTop: 2 },

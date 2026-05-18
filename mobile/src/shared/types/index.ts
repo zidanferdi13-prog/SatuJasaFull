@@ -111,6 +111,72 @@ export interface PricingRule {
   updatedAt?: string;
 }
 
+export interface MasterVehicleType {
+  id: string;
+  code: string;
+  name: string;
+  priceGroup: string;
+  isActive: boolean;
+}
+
+export interface MasterFeeRule {
+  id: string;
+  provinceCode: string;
+  cityCode?: string;
+  serviceTypeId: string;
+  vehicleTypeCode: string;
+  priceGroup: string;
+  componentCode: string;
+  componentName: string;
+  defaultAmount: number;
+  isEditable: boolean;
+  isRequired: boolean;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface MasterDocumentRequirement {
+  id: string;
+  serviceTypeId: string;
+  documentCode: string;
+  documentName: string;
+  isRequired: boolean;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface TransactionRequirement {
+  provinceCode: string;
+  vehicleType: MasterVehicleType;
+  feeRules: MasterFeeRule[];
+  documentRequirements: MasterDocumentRequirement[];
+  totalDefaultAmount: number;
+}
+
+export interface TransactionItemFeeDetail {
+  id: string;
+  transactionItemId: string;
+  componentCode: string;
+  componentName: string;
+  defaultAmount: number;
+  amount: number;
+  isEditable: boolean;
+  source: string;
+  notes?: string;
+}
+
+export interface TransactionItemDocumentChecklist {
+  id: string;
+  transactionItemId: string;
+  documentCode: string;
+  documentName: string;
+  isRequired: boolean;
+  isChecked: boolean;
+  checkedAt?: string;
+  checkedBy?: string;
+  notes?: string;
+}
+
 export interface TransactionItem {
   id: string;
   transactionId: string;
@@ -123,6 +189,8 @@ export interface TransactionItem {
   finalPrice?: number;
   vehicle?: Vehicle;
   serviceType?: ServiceType;
+  feeDetails?: TransactionItemFeeDetail[];
+  documentChecklist?: TransactionItemDocumentChecklist[];
 }
 
 export interface TransactionLog {

@@ -4,6 +4,25 @@
 
 PostgreSQL database with multi-tenant architecture. Single database instance with `bureau_id` field for row-level isolation.
 
+## Active Schema Note
+
+> Audited: 2026-05-17
+
+The active schema source is `backend/prisma/schema.prisma`. Older references in this document to `bureau_id`, `bureaus`, `services`, `document_tracking`, and `document_stage_history` are deprecated unless they exist in Prisma. The current implementation uses `tenantId`, `tenants`, `service_types`, `transactions`, `transaction_items`, and `transaction_logs`.
+
+Fee design tables added for STNK cost snapshots:
+
+| Table | Purpose |
+|---|---|
+| `m_vehicle_types` | Master vehicle type and price group mapping |
+| `m_fee_components` | Master fee component names/codes |
+| `m_fee_rules` | Province/vehicle/service-specific default fee template |
+| `m_service_document_requirements` | Master document checklist per service |
+| `transaction_item_fee_details` | Immutable transaction fee snapshot with editable `amount` |
+| `transaction_item_document_checklists` | Transaction document checklist snapshot |
+
+JABAR is the seeded default `provinceCode`, but other provinces can be added through more `m_fee_rules` rows.
+
 ## Tables
 
 ### Core User & Organization

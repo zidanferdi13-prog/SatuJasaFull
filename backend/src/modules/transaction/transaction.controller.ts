@@ -12,6 +12,13 @@ export class TransactionController {
     } catch (err) { next(err); }
   }
 
+  static async getRequirements(req: Request, res: Response, next: NextFunction) {
+    try {
+      const requirements = await TransactionService.getRequirements(req.user!.tenant_id, req.query);
+      return sendSuccess(res, requirements);
+    } catch (err) { next(err); }
+  }
+
   static async getOne(req: Request, res: Response, next: NextFunction) {
     try {
       const tx = await TransactionService.findById(req.params.id, req.user!.tenant_id);
@@ -61,6 +68,20 @@ export class TransactionController {
     try {
       const tx = await TransactionService.close(req.params.id, req.user!.tenant_id, req.user!.user_id);
       return sendSuccess(res, tx, 'Transaction closed');
+    } catch (err) { next(err); }
+  }
+
+  static async updateDocumentChecklist(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tx = await TransactionService.updateDocumentChecklist(
+        req.params.id,
+        req.params.checklistId,
+        req.user!.tenant_id,
+        req.user!.user_id,
+        req.body.isChecked,
+        req.body.notes
+      );
+      return sendSuccess(res, tx, 'Document checklist updated');
     } catch (err) { next(err); }
   }
 

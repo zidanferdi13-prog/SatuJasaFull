@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   },
   filterChipText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5, color: Colors.textSecondary },
   filterChipTextActive: { color: '#fff' },
-  listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 96, gap: Spacing.md },
+  listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: 156, gap: Spacing.md },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
@@ -337,14 +337,15 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: Spacing.xs, textAlign: 'center' },
   fab: {
     position: 'absolute',
-    bottom: Spacing.xl,
     right: Spacing.xl,
+    bottom: 104,
     width: 58,
     height: 58,
     borderRadius: BorderRadius.lg,
     backgroundColor: Colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 20,
     ...Shadow.md,
   },
 });

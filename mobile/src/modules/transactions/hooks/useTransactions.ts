@@ -3,6 +3,7 @@ import {
   transactionService,
   CreateTransactionPayload,
   FinalizePayload,
+  UpdateDocumentChecklistPayload,
 } from '../services/transaction.service';
 import { TransactionStatus } from '../../../shared/types';
 
@@ -29,6 +30,19 @@ export function useTransaction(id: string) {
     queryKey: ['transaction', id],
     queryFn: () => transactionService.getById(id),
     enabled: !!id,
+  });
+}
+
+export function useTransactionRequirements(params: {
+  serviceTypeId?: string;
+  vehicleTypeCode?: string;
+  provinceCode?: string;
+  cityCode?: string;
+}) {
+  return useQuery({
+    queryKey: ['transaction-requirements', params],
+    queryFn: () => transactionService.getRequirements(params),
+    enabled: !!params.serviceTypeId,
   });
 }
 
@@ -62,6 +76,17 @@ export function useFinalizeTransaction(id: string) {
     mutationFn: (payload: FinalizePayload) => transactionService.finalize(id, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transaction', id] });
+    },
+  });
+}
+
+export function useUpdateDocumentChecklist(transactionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ checklistId, payload }: { checklistId: string; payload: UpdateDocumentChecklistPayload }) =>
+      transactionService.updateDocumentChecklist(transactionId, checklistId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transaction', transactionId] });
     },
   });
 }

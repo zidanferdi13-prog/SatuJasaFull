@@ -1,5 +1,5 @@
 import apiClient from '../../../shared/services/api-client';
-import { ApiResponse, Transaction, Payment, PaginatedMeta, TransactionStatus } from '../../../shared/types';
+import { ApiResponse, Transaction, Payment, PaginatedMeta, TransactionStatus, TransactionRequirement } from '../../../shared/types';
 
 export interface TransactionListResult {
   transactions: Transaction[];
@@ -9,9 +9,22 @@ export interface TransactionListResult {
 export interface CreateTransactionPayload {
   customerId: string;
   branchId?: string;
-  items: { vehicleId: string; serviceTypeId: string; baseCost: number }[];
+  items: {
+    vehicleId: string;
+    serviceTypeId: string;
+    baseCost?: number;
+    vehicleTypeCode?: string;
+    provinceCode?: string;
+    cityCode?: string;
+    feeDetails?: { componentCode: string; amount: number }[];
+  }[];
   dpAmount?: number;
   estimatedFinishDate?: string;
+  notes?: string;
+}
+
+export interface UpdateDocumentChecklistPayload {
+  isChecked: boolean;
   notes?: string;
 }
 
@@ -47,6 +60,16 @@ export const transactionService = {
     return data.data;
   },
 
+  getRequirements: async (params: {
+    serviceTypeId?: string;
+    vehicleTypeCode?: string;
+    provinceCode?: string;
+    cityCode?: string;
+  }): Promise<TransactionRequirement> => {
+    const { data } = await apiClient.get<ApiResponse<TransactionRequirement>>('/transactions/requirements', { params });
+    return data.data;
+  },
+
   create: async (payload: CreateTransactionPayload): Promise<Transaction> => {
     const { data } = await apiClient.post<ApiResponse<Transaction>>('/transactions', payload);
     return data.data;
@@ -54,6 +77,11 @@ export const transactionService = {
 
   updateStatus: async (id: string, status: TransactionStatus, notes?: string): Promise<Transaction> => {
     const { data } = await apiClient.patch<ApiResponse<Transaction>>(`/transactions/${id}/status`, { status, notes });
+    return data.data;
+  },
+
+  updateDocumentChecklist: async (transactionId: string, checklistId: string, payload: UpdateDocumentChecklistPayload): Promise<Transaction> => {
+    const { data } = await apiClient.patch<ApiResponse<Transaction>>(`/transactions/${transactionId}/document-checklist/${checklistId}`, payload);
     return data.data;
   },
 

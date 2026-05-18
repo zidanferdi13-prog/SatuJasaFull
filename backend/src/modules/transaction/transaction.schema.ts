@@ -12,6 +12,13 @@ export const createTransactionSchema = z.object({
       serviceTypeId: z.string().uuid(),
       baseCost: z.number().nonnegative().optional(),
       price: z.number().nonnegative().optional(),
+      vehicleTypeCode: z.string().optional(),
+      provinceCode: z.string().optional(),
+      cityCode: z.string().optional(),
+      feeDetails: z.array(z.object({
+        componentCode: z.string(),
+        amount: z.number().nonnegative(),
+      })).optional(),
     })).min(1),
   }),
 });
@@ -26,6 +33,13 @@ export const updateTransactionStatusSchema = z.object({
 export const finalizeTransactionSchema = z.object({
   body: z.object({
     finalTotal: z.number().nonnegative(),
+    notes: z.string().optional(),
+  }),
+});
+
+export const updateDocumentChecklistSchema = z.object({
+  body: z.object({
+    isChecked: z.boolean(),
     notes: z.string().optional(),
   }),
 });

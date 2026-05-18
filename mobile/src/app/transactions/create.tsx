@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,70 +13,45 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useCreateTransaction } from '../../modules/transactions/hooks/useTransactions';
+import { useCreateTransaction, useTransactionRequirements } from '../../modules/transactions/hooks/useTransactions';
 import { useCustomers, useCreateCustomer } from '../../modules/customers/hooks/useCustomers';
 import { useVehicles, useCreateVehicle } from '../../modules/vehicles/hooks/useVehicles';
 import { useServiceTypes } from '../../modules/settings/hooks/useSettings';
-import { Customer, Vehicle, ServiceType } from '../../shared/types';
+import { Customer, Vehicle, ServiceType, MasterFeeRule } from '../../shared/types';
 import { Colors, Spacing, Typography, Shadow, BorderRadius } from '../../theme';
 import { getErrorMessage } from '../../shared/services/api-error';
 
-type StnkFeeKey =
-  | 'pkbPokok'
-  | 'pkbDenda'
-  | 'opsenPkbPokok'
-  | 'opsenPkbDenda'
-  | 'swdklljPokok'
-  | 'swdklljDenda'
-  | 'pnbpStnk'
-  | 'pnbpTnkb';
-
-type StnkFeeInputs = Record<StnkFeeKey, string>;
+interface EditableFeeRule extends MasterFeeRule {
+  amount: string;
+}
 
 interface TransactionItemInput {
   vehicleId: string;
   vehicle: Vehicle;
   serviceTypeId: string;
   serviceTypeName: string;
+  vehicleTypeCode: string;
+  provinceCode: string;
   baseCost: number;
   serviceFee: number;
   estimatedPrice: string;
-  stnkFees: StnkFeeInputs;
+  feeDetails: { componentCode: string; amount: number }[];
 }
 
 const MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-const STNK_FEE_CATEGORIES: { key: StnkFeeKey; label: string }[] = [
-  { key: 'pkbPokok', label: 'PKB Pokok' },
-  // { key: 'pkbDenda', label: 'PKB Denda' },
-  { key: 'opsenPkbPokok', label: 'Opsen PKB Pokok' },
-  // { key: 'opsenPkbDenda', label: 'Opsen PKB Denda' },
-  { key: 'swdklljPokok', label: 'SWDKLLJ Pokok' },
-  // { key: 'swdklljDenda', label: 'SWDKLLJ Denda' },
-  { key: 'pnbpStnk', label: 'PNBP STNK' },
-  { key: 'pnbpTnkb', label: 'PNBP TNKB' },
-];
-
-const DEFAULT_STNK_FEES: StnkFeeInputs = {
-  pkbPokok: '',
-  pkbDenda: '',
-  opsenPkbPokok: '',
-  opsenPkbDenda: '',
-  swdklljPokok: '',
-  swdklljDenda: '',
-  pnbpStnk: '',
-  pnbpTnkb: '',
-};
-
+const DEFAULT_VEHICLE_TYPE_CODE = 'MOTOR';
+const DEFAULT_PROVINCE_CODE = 'JABAR';
+const SERVICE_FEE_COMPONENTS = new Set(['JASA_BIRO']);
+const HIDDEN_FEE_COMPONENTS = new Set(['OPERASIONAL']);
+const PENALTY_FEE_COMPONENTS = new Set(['PKB_DENDA', 'OPSEN_PKB_DENDA', 'SWDKLLJ_DENDA', 'DENDA_PKB', 'DENDA_SWDKLLJ']);
 const parseMoneyInput = (value: string) => Number(value.replace(/[^\d]/g, '')) || 0;
-
-const calculateStnkFeeTotal = (fees: StnkFeeInputs) =>
-  Object.values(fees).reduce((sum, value) => sum + parseMoneyInput(value), 0);
-
-const getServiceFee = (serviceType: ServiceType | null) => {
-  const rule = serviceType?.pricingRules?.find((pricingRule) => pricingRule.isActive);
-  return Number(rule?.marginAmount || 0);
-};
+const isPenaltyService = (serviceName?: string) => /mati|telat|denda/i.test(serviceName || '');
+const isVisibleFee = (fee: { componentCode: string }, serviceName?: string) => (
+  !HIDDEN_FEE_COMPONENTS.has(fee.componentCode) && (!PENALTY_FEE_COMPONENTS.has(fee.componentCode) || isPenaltyService(serviceName))
+);
+const sumAmounts = (items?: { defaultAmount?: number; amount?: string | number; componentCode?: string }[]) =>
+  (items || []).reduce((sum, item) => sum + (typeof item.amount === 'string' ? parseMoneyInput(item.amount) : Number(item.amount ?? item.defaultAmount ?? 0)), 0);
 
 const dpStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -230,7 +205,8 @@ export default function CreateTransactionScreen() {
   const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
   const [selectedServiceType, setSelectedServiceType] = useState<ServiceType | null>(null);
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
-  const [vehicleFees, setVehicleFees] = useState<StnkFeeInputs>(DEFAULT_STNK_FEES);
+  const [selectedVehicleTypeCode, setSelectedVehicleTypeCode] = useState(DEFAULT_VEHICLE_TYPE_CODE);
+  const [editableFees, setEditableFees] = useState<EditableFeeRule[]>([]);
 
   // Inline add customer
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -252,17 +228,31 @@ export default function CreateTransactionScreen() {
     search: vehicleSearch.length >= 2 ? vehicleSearch : undefined,
   });
   const { data: serviceTypes } = useServiceTypes();
+  const { data: requirements, isFetching: isFetchingRequirements } = useTransactionRequirements({
+    serviceTypeId: selectedServiceType?.id,
+    vehicleTypeCode: selectedVehicleTypeCode,
+    provinceCode: DEFAULT_PROVINCE_CODE,
+  });
+
+  useEffect(() => {
+    setEditableFees((requirements?.feeRules || []).map((fee) => ({
+      ...fee,
+      amount: String(Number(fee.defaultAmount || 0)),
+    })));
+  }, [requirements]);
 
   const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
-  const currentVehicleFeeTotal = calculateStnkFeeTotal(vehicleFees);
-  const currentServiceFee = getServiceFee(selectedServiceType);
+  const visibleFees = editableFees.filter((fee) => isVisibleFee(fee, selectedServiceType?.name));
+  const officialFeeRules = visibleFees.filter((fee) => !SERVICE_FEE_COMPONENTS.has(fee.componentCode));
+  const serviceFeeRules = visibleFees.filter((fee) => SERVICE_FEE_COMPONENTS.has(fee.componentCode));
+  const currentVehicleFeeTotal = sumAmounts(officialFeeRules);
+  const currentServiceFee = sumAmounts(serviceFeeRules);
   const currentVehicleGrossTotal = currentVehicleFeeTotal + currentServiceFee;
-  const updateVehicleFee = (key: StnkFeeKey, value: string) => {
-    setVehicleFees((fees) => ({ ...fees, [key]: value.replace(/[^\d]/g, '') }));
+  const updateEditableFee = (componentCode: string, value: string) => {
+    setEditableFees((fees) => fees.map((fee) => (
+      fee.componentCode === componentCode ? { ...fee, amount: value.replace(/[^\d]/g, '') } : fee
+    )));
   };
-  const getNonZeroFees = (fees: StnkFeeInputs) =>
-    STNK_FEE_CATEGORIES.map((category) => ({ ...category, amount: parseMoneyInput(fees[category.key]) }))
-      .filter((category) => category.amount > 0);
 
   const goBack = () => {
     if (step === 0) router.back();
@@ -271,18 +261,23 @@ export default function CreateTransactionScreen() {
 
   const handleAddItem = () => {
     if (!addingVehicle || !selectedServiceType) return;
-    const baseCost = calculateStnkFeeTotal(vehicleFees);
-    const serviceFee = getServiceFee(selectedServiceType);
+    const baseCost = currentVehicleFeeTotal;
+    const serviceFee = currentServiceFee;
     const existing = selectedItems.findIndex((i) => i.vehicleId === addingVehicle.id);
     const newItem: TransactionItemInput = {
       vehicleId: addingVehicle.id,
       vehicle: addingVehicle,
       serviceTypeId: selectedServiceType.id,
       serviceTypeName: selectedServiceType.name,
+      vehicleTypeCode: selectedVehicleTypeCode,
+      provinceCode: DEFAULT_PROVINCE_CODE,
       baseCost,
       serviceFee,
       estimatedPrice: String(baseCost + serviceFee),
-      stnkFees: vehicleFees,
+      feeDetails: visibleFees.map((fee) => ({
+        componentCode: fee.componentCode,
+        amount: parseMoneyInput(fee.amount),
+      })),
     };
     if (existing >= 0) {
       const updated = [...selectedItems];
@@ -295,7 +290,8 @@ export default function CreateTransactionScreen() {
     setShowVehicleDropdown(false);
     setSelectedServiceType(null);
     setShowServiceDropdown(false);
-    setVehicleFees(DEFAULT_STNK_FEES);
+    setSelectedVehicleTypeCode(DEFAULT_VEHICLE_TYPE_CODE);
+    setEditableFees([]);
     setShowVehiclePicker(false);
   };
 
@@ -353,7 +349,9 @@ export default function CreateTransactionScreen() {
         items: selectedItems.map((item) => ({
           vehicleId: item.vehicleId,
           serviceTypeId: item.serviceTypeId,
-          baseCost: item.baseCost,
+          vehicleTypeCode: item.vehicleTypeCode,
+          provinceCode: item.provinceCode,
+          feeDetails: item.feeDetails,
         })),
         dpAmount: dpAmount ? parseFloat(dpAmount) : undefined,
         estimatedFinishDate: estimatedDate || undefined,
@@ -639,29 +637,75 @@ export default function CreateTransactionScreen() {
                       </View>
                     )}
 
-                    <Text style={[styles.pickerTitle, { marginTop: Spacing.md }]}>Rincian Biaya STNK</Text>
-                    <Text style={styles.feeHelpText}>Isi biaya yang diperlukan, biarkan 0 jika tidak ada.</Text>
-                    {STNK_FEE_CATEGORIES.map((category) => (
-                      <View key={category.key} style={styles.feeRow}>
-                        <Text style={styles.feeLabel}>{category.label}</Text>
-                        <TextInput
-                          style={styles.feeInput}
-                          placeholder="0"
-                          value={vehicleFees[category.key]}
-                          onChangeText={(value) => updateVehicleFee(category.key, value)}
-                          keyboardType="numeric"
-                        />
+                    <Text style={[styles.pickerTitle, { marginTop: Spacing.md }]}>Tipe Kendaraan</Text>
+                    <View style={styles.vehicleTypeRow}>
+                      {['MOTOR', 'MOBIL', 'PICKUP', 'TRUK', 'BUS', 'LAINNYA'].map((code) => (
+                        <Pressable
+                          key={code}
+                          style={[styles.vehicleTypeChip, selectedVehicleTypeCode === code && styles.vehicleTypeChipActive]}
+                          onPress={() => setSelectedVehicleTypeCode(code)}
+                        >
+                          <Text style={[styles.vehicleTypeChipText, selectedVehicleTypeCode === code && styles.vehicleTypeChipTextActive]}>{code}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+
+                    <Text style={[styles.pickerTitle, { marginTop: Spacing.md }]}>Informasi Biaya</Text>
+                    <Text style={styles.feeHelpText}>Isi biaya sesuai notice/STNK. Jasa Biro otomatis dari Aturan Harga tenant.</Text>
+                    {isFetchingRequirements ? (
+                      <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.md }} />
+                    ) : requirements?.feeRules?.length ? (
+                      <>
+                        <View style={styles.feeGroupCard}>
+                          <Text style={styles.feeGroupTitle}>Biaya Resmi / Pajak</Text>
+                          {officialFeeRules.map((fee) => (
+                            <View key={fee.id} style={styles.feeRow}>
+                              <Text style={styles.feeLabel}>{fee.componentName}</Text>
+                              <Text style={styles.feeCurrency}>Rp</Text>
+                              <TextInput
+                                style={styles.feeInput}
+                                value={fee.amount}
+                                onChangeText={(value) => updateEditableFee(fee.componentCode, value)}
+                                keyboardType="numeric"
+                                placeholder="0"
+                              />
+                            </View>
+                          ))}
+                          <View style={styles.feeSubtotalRow}>
+                            <Text style={styles.feeSubtotalLabel}>Subtotal biaya resmi</Text>
+                            <Text style={styles.feeSubtotalValue}>Rp {currentVehicleFeeTotal.toLocaleString('id-ID')}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.feeGroupCard}>
+                          <Text style={styles.feeGroupTitle}>Jasa Biro</Text>
+                          {serviceFeeRules.map((fee) => (
+                            <View key={fee.id} style={styles.feeRow}>
+                              <Text style={styles.feeLabel}>{fee.componentName}</Text>
+                              <Text style={styles.feeSystemValue}>Rp {parseMoneyInput(fee.amount).toLocaleString('id-ID')}</Text>
+                            </View>
+                          ))}
+                          <View style={styles.feeSubtotalRow}>
+                            <Text style={styles.feeSubtotalLabel}>Subtotal jasa</Text>
+                            <Text style={styles.feeSubtotalValue}>Rp {currentServiceFee.toLocaleString('id-ID')}</Text>
+                          </View>
+                        </View>
+                      </>
+                    ) : (
+                      <Text style={styles.feeHelpText}>Pilih layanan untuk melihat rincian biaya.</Text>
+                    )}
+                    {!!requirements?.documentRequirements?.length && (
+                      <View style={styles.feeGroupCard}>
+                        <Text style={styles.feeGroupTitle}>Checklist Dokumen</Text>
+                        {requirements.documentRequirements.map((doc) => (
+                          <Text key={doc.id} style={styles.summaryFee}>• {doc.documentName}</Text>
+                        ))}
                       </View>
-                    ))}
-                    <View style={styles.feeBreakdown}>
-                      <View style={styles.feeTotalRowPlain}>
-                        <Text style={styles.feeBreakdownLabel}>Total biaya STNK/modal</Text>
-                        <Text style={styles.feeBreakdownValue}>Rp {currentVehicleFeeTotal.toLocaleString('id-ID')}</Text>
-                      </View>
-                      <View style={styles.feeTotalRowPlain}>
-                        <Text style={styles.feeBreakdownLabel}>Jasa biro</Text>
-                        <Text style={styles.feeBreakdownValue}>Rp {currentServiceFee.toLocaleString('id-ID')}</Text>
-                      </View>
+                    )}
+                    <View style={styles.feeFormulaBox}>
+                      <Text style={styles.feeFormulaText}>
+                        Total = biaya pajak/resmi Rp {currentVehicleFeeTotal.toLocaleString('id-ID')} + jasa biro Rp {currentServiceFee.toLocaleString('id-ID')}
+                      </Text>
                     </View>
                     <View style={styles.feeTotalRow}>
                       <Text style={styles.feeTotalLabel}>Total tagihan kendaraan</Text>
@@ -674,14 +718,14 @@ export default function CreateTransactionScreen() {
                         setAddingVehicle(null);
                         setSelectedServiceType(null);
                         setShowServiceDropdown(false);
-                        setVehicleFees(DEFAULT_STNK_FEES);
+                        setSelectedVehicleTypeCode(DEFAULT_VEHICLE_TYPE_CODE);
                       }}>
                         <Text style={styles.cancelBtnText}>Batal</Text>
                       </Pressable>
                       <Pressable
-                        style={[styles.confirmBtn, (!addingVehicle || !selectedServiceType || currentVehicleFeeTotal <= 0) && styles.btnDisabled]}
+                        style={[styles.confirmBtn, (!addingVehicle || !selectedServiceType || !requirements?.feeRules?.length) && styles.btnDisabled]}
                         onPress={handleAddItem}
-                        disabled={!addingVehicle || !selectedServiceType || currentVehicleFeeTotal <= 0}
+                        disabled={!addingVehicle || !selectedServiceType || !requirements?.feeRules?.length}
                       >
                         <Text style={styles.confirmBtnText}>Tambahkan</Text>
                       </Pressable>
@@ -721,11 +765,9 @@ export default function CreateTransactionScreen() {
                   <View style={styles.summaryMain}>
                     <Text style={styles.summaryPlate}>{item.vehicle.plateNumber}</Text>
                     <Text style={styles.summaryService}>{item.serviceTypeName}</Text>
-                    {getNonZeroFees(item.stnkFees).map((fee) => (
-                      <Text key={fee.key} style={styles.summaryFee}>
-                        {fee.label}: Rp {fee.amount.toLocaleString('id-ID')}
-                      </Text>
-                    ))}
+                    <Text style={styles.summaryFee}>Tipe: {item.vehicleTypeCode}</Text>
+                    <Text style={styles.summaryFee}>Modal/biaya resmi: Rp {item.baseCost.toLocaleString('id-ID')}</Text>
+                    <Text style={styles.summaryFee}>Jasa biro: Rp {item.serviceFee.toLocaleString('id-ID')}</Text>
                   </View>
                   <Text style={styles.summaryPrice}>Rp {parseFloat(item.estimatedPrice).toLocaleString('id-ID')}</Text>
                 </View>
@@ -1002,24 +1044,54 @@ const styles = StyleSheet.create({
   },
   changeVehicleText: { color: Colors.primaryDark, fontSize: 12, fontWeight: '800' },
   feeHelpText: { ...Typography.caption, color: Colors.textSecondary, marginBottom: Spacing.sm },
+  feeGroupCard: {
+    backgroundColor: Colors.surfaceMuted,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.divider,
+    padding: Spacing.md,
+    gap: 8,
+    marginBottom: Spacing.sm,
+  },
+  feeGroupTitle: { ...Typography.bodySmall, color: Colors.text, fontWeight: '900' },
   feeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginBottom: Spacing.sm,
   },
   feeLabel: { ...Typography.bodySmall, color: Colors.text, flex: 1, fontWeight: '500' },
+  feeReadOnlyValue: { ...Typography.bodySmall, color: Colors.text, fontWeight: '700', textAlign: 'right' },
+  feeCurrency: { ...Typography.bodySmall, color: Colors.textSecondary, fontWeight: '800' },
+  feeSystemValue: { ...Typography.bodySmall, color: Colors.primary, fontWeight: '900', textAlign: 'right' },
+  feeSubtotalRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: Colors.divider, paddingTop: 8, marginTop: 2 },
+  feeSubtotalLabel: { ...Typography.bodySmall, color: Colors.text, fontWeight: '800' },
+  feeSubtotalValue: { ...Typography.bodySmall, color: Colors.text, fontWeight: '900' },
+  feeFormulaBox: { backgroundColor: Colors.primary + '10', borderRadius: BorderRadius.md, padding: Spacing.sm, marginBottom: Spacing.sm },
+  feeFormulaText: { ...Typography.caption, color: Colors.primary, fontWeight: '700' },
+  vehicleTypeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginBottom: Spacing.sm },
+  vehicleTypeChip: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 8,
+    backgroundColor: Colors.surface,
+  },
+  vehicleTypeChipActive: { borderColor: Colors.primary, backgroundColor: Colors.primary + '12' },
+  vehicleTypeChipText: { ...Typography.caption, color: Colors.textSecondary, fontWeight: '700' },
+  vehicleTypeChipTextActive: { color: Colors.primary },
   feeInput: {
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 8,
     fontSize: 14,
     color: Colors.text,
     backgroundColor: Colors.surface,
-    width: 130,
+    width: 120,
     textAlign: 'right',
+    fontWeight: '700',
   },
   feeTotalRow: {
     flexDirection: 'row',

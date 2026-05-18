@@ -67,6 +67,8 @@ model Tenant {
   transactions     Transaction[]
   serviceTypes     ServiceType[]
   pricingRules     PricingRule[]
+  masterFeeRules   MasterFeeRule[]
+  documentRequirements MasterServiceDocumentRequirement[]
   invoiceSequences InvoiceSequence[]
   whatsappQueues   WhatsappQueue[]
   auditLogs        AuditLog[]
@@ -166,9 +168,83 @@ model ServiceType {
   tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
   transactionItems TransactionItem[]
-  pricingRules     PricingRule[]
+  pricingRules         PricingRule[]
+  masterFeeRules      MasterFeeRule[]
+  documentRequirements MasterServiceDocumentRequirement[]
 
   @@map("service_types")
+}
+
+model MasterVehicleType {
+  id         String   @id @default(uuid())
+  code       String   @unique
+  name       String
+  priceGroup String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([priceGroup])
+  @@map("m_vehicle_types")
+}
+
+model MasterFeeComponent {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("m_fee_components")
+}
+
+model MasterFeeRule {
+  id              String   @id @default(uuid())
+  tenantId        String?
+  provinceCode    String   @default("JABAR")
+  cityCode        String?
+  serviceTypeId   String
+  vehicleTypeCode String
+  priceGroup      String
+  componentCode   String
+  componentName   String
+  defaultAmount   Decimal  @db.Decimal(15, 2) @default(0)
+  isEditable      Boolean  @default(true)
+  isRequired      Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant      Tenant?     @relation(fields: [tenantId], references: [id])
+  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
+
+  @@index([tenantId, provinceCode, serviceTypeId, vehicleTypeCode])
+  @@index([tenantId, provinceCode, serviceTypeId, priceGroup])
+  @@index([componentCode])
+  @@map("m_fee_rules")
+}
+
+model MasterServiceDocumentRequirement {
+  id           String   @id @default(uuid())
+  tenantId     String?
+  serviceTypeId String
+  documentCode String
+  documentName String
+  isRequired   Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant      Tenant?     @relation(fields: [tenantId], references: [id])
+  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
+
+  @@index([tenantId, serviceTypeId])
+  @@index([documentCode])
+  @@map("m_service_document_requirements")
 }
 
 model PricingRule {
@@ -236,11 +312,53 @@ model TransactionItem {
   serviceFee    Decimal  @db.Decimal(15, 2) @default(0)
   createdAt     DateTime @default(now())
 
-  transaction Transaction @relation(fields: [transactionId], references: [id])
-  vehicle     Vehicle     @relation(fields: [vehicleId], references: [id])
-  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
+  transaction       Transaction                        @relation(fields: [transactionId], references: [id])
+  vehicle           Vehicle                            @relation(fields: [vehicleId], references: [id])
+  serviceType       ServiceType                        @relation(fields: [serviceTypeId], references: [id])
+  feeDetails        TransactionItemFeeDetail[]
+  documentChecklist TransactionItemDocumentChecklist[]
 
   @@map("transaction_items")
+}
+
+model TransactionItemFeeDetail {
+  id                String   @id @default(uuid())
+  transactionItemId String
+  componentCode     String
+  componentName     String
+  defaultAmount     Decimal  @db.Decimal(15, 2) @default(0)
+  amount            Decimal  @db.Decimal(15, 2) @default(0)
+  isEditable        Boolean  @default(true)
+  source            String   @default("master")
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  transactionItem TransactionItem @relation(fields: [transactionItemId], references: [id], onDelete: Cascade)
+
+  @@index([transactionItemId])
+  @@index([componentCode])
+  @@map("transaction_item_fee_details")
+}
+
+model TransactionItemDocumentChecklist {
+  id                String    @id @default(uuid())
+  transactionItemId String
+  documentCode      String
+  documentName      String
+  isRequired        Boolean   @default(true)
+  isChecked         Boolean   @default(false)
+  checkedAt         DateTime?
+  checkedBy         String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  transactionItem TransactionItem @relation(fields: [transactionItemId], references: [id], onDelete: Cascade)
+
+  @@index([transactionItemId])
+  @@index([documentCode])
+  @@map("transaction_item_document_checklists")
 }
 
 model Payment {

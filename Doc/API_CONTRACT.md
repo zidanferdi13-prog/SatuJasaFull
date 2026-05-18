@@ -216,6 +216,22 @@ All transaction routes require auth + subscription check.
 ### GET /transactions
 **Query params:** `page`, `limit`, `search` (invoice number, plate, customer name), `status`, `branchId`, `start_date`, `end_date`, `sort` (e.g. `created_at:desc`)
 
+### GET /transactions/requirements
+Returns master fee and document checklist templates for the selected service, vehicle type, and province.
+
+**Query params:** `serviceTypeId` (required), `vehicleTypeCode` (default `MOTOR`), `provinceCode` (default `JABAR`), `cityCode` (optional)
+
+**Response 200**
+```json
+{
+  "provinceCode": "JABAR",
+  "vehicleType": { "code": "MOTOR", "name": "Motor", "priceGroup": "R2_R3" },
+  "feeRules": [{ "componentCode": "PKB_POKOK", "componentName": "PKB Pokok", "defaultAmount": 0, "isEditable": true }],
+  "documentRequirements": [{ "documentCode": "STNK_ASLI", "documentName": "STNK Asli", "isRequired": true }],
+  "totalDefaultAmount": 310000
+}
+```
+
 ### POST /transactions
 **Request**
 ```json
@@ -225,13 +241,24 @@ All transaction routes require auth + subscription check.
   "estimatedFinishDate": "ISO date string (optional)",
   "notes": "string (optional)",
   "items": [
-    { "vehicleId": "uuid", "serviceTypeId": "uuid", "price": "number", "notes": "string (optional)" }
+    {
+      "vehicleId": "uuid",
+      "serviceTypeId": "uuid",
+      "vehicleTypeCode": "MOTOR | MOBIL | PICKUP | TRUK | BUS | LAINNYA",
+      "provinceCode": "JABAR",
+      "feeDetails": [
+        { "componentCode": "PKB_POKOK", "amount": 152800 },
+        { "componentCode": "JASA_BIRO", "amount": 150000 }
+      ]
+    }
   ]
 }
 ```
 
+Backend copies `m_fee_rules` into `transaction_item_fee_details` and `m_service_document_requirements` into `transaction_item_document_checklists`. `defaultAmount` is copied from master, while submitted `feeDetails.amount` becomes the transaction `amount`. `JASA_BIRO` default is sourced from tenant `pricing_rules`. Transaction totals are calculated from copied fee detail `amount`, not from master rules.
+
 ### GET /transactions/:id
-Full transaction with items, payments, logs.
+Full transaction with items, fee detail snapshots, document checklist snapshots, payments, logs.
 
 ### PATCH /transactions/:id/status
 **Request** `{ "status": "TransactionStatus", "notes": "string (optional)" }`

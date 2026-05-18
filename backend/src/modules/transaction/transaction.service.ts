@@ -12,11 +12,17 @@ const TX_INCLUDE = {
     include: {
       vehicle: { select: { id: true, plateNumber: true, brand: true, model: true } },
       serviceType: { select: { id: true, name: true } },
+      feeDetails: { orderBy: { createdAt: 'asc' as const } },
+      documentChecklist: { orderBy: { createdAt: 'asc' as const } },
     },
   },
   payments: { orderBy: { createdAt: 'asc' as const } },
   logs: { orderBy: { createdAt: 'asc' as const } },
 };
+
+const SERVICE_COMPONENTS = new Set(['JASA_BIRO']);
+
+const numberValue = (value: unknown) => Number(value || 0);
 
 export class TransactionService {
   private static async resolveBranch(tenantId: string, branchId?: string) {
@@ -28,22 +34,135 @@ export class TransactionService {
     return BranchService.getOrCreateDefault(tenantId);
   }
 
-  private static async buildTransactionItems(tenantId: string, items: any[]) {
-    return Promise.all(items.map(async (item) => {
-      const pricingRule = await prisma.pricingRule.findFirst({
-        where: {
-          tenantId,
-          serviceTypeId: item.serviceTypeId,
-          isActive: true,
-        },
+  private static async getVehicleType(vehicleTypeCode?: string) {
+    if (vehicleTypeCode) {
+      const vehicleType = await prisma.masterVehicleType.findFirst({ where: { code: vehicleTypeCode, isActive: true } });
+      if (vehicleType) return vehicleType;
+    }
+
+    return prisma.masterVehicleType.findFirst({ where: { code: 'MOTOR', isActive: true } });
+  }
+
+  private static async getFeeRules(tenantId: string, serviceTypeId: string, vehicleTypeCode?: string, provinceCode = 'JABAR') {
+    const vehicleType = await TransactionService.getVehicleType(vehicleTypeCode);
+    if (!vehicleType) throw Object.assign(new Error('Vehicle type master data is not configured'), { statusCode: 422 });
+
+    const where = {
+      provinceCode,
+      serviceTypeId,
+      vehicleTypeCode: vehicleType.code,
+      isActive: true,
+    };
+
+    const tenantRules = await prisma.masterFeeRule.findMany({
+      where: { ...where, tenantId },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const rules = tenantRules.length > 0
+      ? tenantRules
+      : await prisma.masterFeeRule.findMany({
+        where: { ...where, tenantId: null },
+        orderBy: { sortOrder: 'asc' },
       });
 
-      if (!pricingRule) {
-        throw Object.assign(new Error('Pricing rule not configured for selected service type'), { statusCode: 422 });
+    return { vehicleType, rules };
+  }
+
+  private static async getDocumentRequirements(tenantId: string, serviceTypeId: string) {
+    const where = { serviceTypeId, isActive: true };
+    const tenantRequirements = await prisma.masterServiceDocumentRequirement.findMany({
+      where: { ...where, tenantId },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    return tenantRequirements.length > 0
+      ? tenantRequirements
+      : prisma.masterServiceDocumentRequirement.findMany({
+        where: { ...where, tenantId: null },
+        orderBy: { sortOrder: 'asc' },
+      });
+  }
+
+  private static async getServiceFeeAmount(tenantId: string, serviceTypeId: string) {
+    const pricingRule = await prisma.pricingRule.findFirst({
+      where: { tenantId, serviceTypeId, isActive: true },
+    });
+
+    return numberValue(pricingRule?.marginAmount ?? pricingRule?.price ?? 0);
+  }
+
+  private static applyServiceFee(rules: any[], serviceFeeAmount: number) {
+    return rules.map((rule) => (
+      rule.componentCode === 'JASA_BIRO'
+        ? { ...rule, defaultAmount: serviceFeeAmount }
+        : rule
+    ));
+  }
+
+  static async getRequirements(tenantId: string, query: any) {
+    const provinceCode = query.provinceCode || 'JABAR';
+    if (!query.serviceTypeId) throw Object.assign(new Error('serviceTypeId is required'), { statusCode: 400 });
+
+    const { vehicleType, rules } = await TransactionService.getFeeRules(
+      tenantId,
+      query.serviceTypeId,
+      query.vehicleTypeCode,
+      provinceCode
+    );
+    const serviceFeeAmount = await TransactionService.getServiceFeeAmount(tenantId, query.serviceTypeId);
+    const feeRules = TransactionService.applyServiceFee(rules, serviceFeeAmount);
+    const documentRequirements = await TransactionService.getDocumentRequirements(tenantId, query.serviceTypeId);
+
+    return {
+      provinceCode,
+      vehicleType,
+      feeRules,
+      documentRequirements,
+      totalDefaultAmount: feeRules.reduce((sum, rule) => sum + numberValue(rule.defaultAmount), 0),
+    };
+  }
+
+  private static async buildTransactionItems(tenantId: string, items: any[]) {
+    return Promise.all(items.map(async (item) => {
+      const provinceCode = item.provinceCode || 'JABAR';
+      const { vehicleType, rules } = await TransactionService.getFeeRules(
+        tenantId,
+        item.serviceTypeId,
+        item.vehicleTypeCode,
+        provinceCode
+      );
+
+      if (rules.length === 0) {
+        throw Object.assign(new Error('Fee rules not configured for selected service type and vehicle type'), { statusCode: 422 });
       }
 
-      const baseCost = Number(item.baseCost ?? item.price ?? 0);
-      const serviceFee = Number(pricingRule.marginAmount || 0);
+      const documentRequirements = await TransactionService.getDocumentRequirements(tenantId, item.serviceTypeId);
+      const serviceFeeAmount = await TransactionService.getServiceFeeAmount(tenantId, item.serviceTypeId);
+      const feeRules = TransactionService.applyServiceFee(rules, serviceFeeAmount);
+      const amountOverrides = new Map<string, number>(
+        (item.feeDetails || []).map((fee: any) => [fee.componentCode, Number(fee.amount ?? fee.defaultAmount ?? 0)])
+      );
+      const feeDetails = feeRules.map((rule) => {
+        const amount = amountOverrides.has(rule.componentCode)
+          ? amountOverrides.get(rule.componentCode) || 0
+          : numberValue(rule.defaultAmount);
+
+        return {
+          componentCode: rule.componentCode,
+          componentName: rule.componentName,
+          defaultAmount: rule.defaultAmount,
+          amount,
+          isEditable: rule.isEditable,
+          source: 'master',
+        };
+      });
+      const baseCost = feeDetails
+        .filter((fee) => !SERVICE_COMPONENTS.has(fee.componentCode))
+        .reduce((sum, fee) => sum + numberValue(fee.amount), 0);
+      const serviceFee = feeDetails
+        .filter((fee) => SERVICE_COMPONENTS.has(fee.componentCode))
+        .reduce((sum, fee) => sum + numberValue(fee.amount), 0);
       const price = baseCost + serviceFee;
 
       return {
@@ -52,6 +171,14 @@ export class TransactionService {
         price,
         baseCost,
         serviceFee,
+        feeDetails,
+        documentChecklist: documentRequirements.map((doc) => ({
+          documentCode: doc.documentCode,
+          documentName: doc.documentName,
+          isRequired: doc.isRequired,
+        })),
+        vehicleTypeCode: vehicleType.code,
+        provinceCode,
       };
     }));
   }
@@ -88,7 +215,14 @@ export class TransactionService {
         include: {
           customer: { select: { id: true, name: true, phone: true } },
           branch: { select: { id: true, name: true } },
-          items: { include: { vehicle: true, serviceType: true } },
+          items: {
+            include: {
+              vehicle: true,
+              serviceType: true,
+              feeDetails: { orderBy: { createdAt: 'asc' as const } },
+              documentChecklist: { orderBy: { createdAt: 'asc' as const } },
+            },
+          },
         },
       }),
     ]);
@@ -127,7 +261,11 @@ export class TransactionService {
           estimatedFinishDate: data.estimatedFinishDate ? new Date(data.estimatedFinishDate) : null,
           notes: data.notes,
           items: {
-            create: items,
+            create: items.map(({ feeDetails, documentChecklist, vehicleTypeCode, provinceCode, ...item }) => ({
+              ...item,
+              feeDetails: { create: feeDetails },
+              documentChecklist: { create: documentChecklist },
+            })),
           },
         },
         include: TX_INCLUDE,
@@ -281,6 +419,35 @@ export class TransactionService {
 
       return result;
     });
+  }
+
+  static async updateDocumentChecklist(
+    id: string,
+    checklistId: string,
+    tenantId: string,
+    userId: string,
+    isChecked: boolean,
+    notes?: string
+  ) {
+    const checklist = await prisma.transactionItemDocumentChecklist.findFirst({
+      where: {
+        id: checklistId,
+        transactionItem: { transaction: { id, tenantId } },
+      },
+    });
+    if (!checklist) throw Object.assign(new Error('Document checklist not found'), { statusCode: 404 });
+
+    await prisma.transactionItemDocumentChecklist.update({
+      where: { id: checklistId },
+      data: {
+        isChecked,
+        checkedAt: isChecked ? new Date() : null,
+        checkedBy: isChecked ? userId : null,
+        notes,
+      },
+    });
+
+    return TransactionService.findById(id, tenantId);
   }
 
   static async getInvoicePath(id: string, tenantId: string) {

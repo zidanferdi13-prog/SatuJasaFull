@@ -79,6 +79,8 @@ Transaction
 
 The backend handles:
 
+* Master fee rules and transaction fee snapshots for STNK services
+* Document checklist templates and transaction checklist snapshots
 * Tenant management
 * Branch management
 * User authentication
@@ -94,6 +96,19 @@ The backend handles:
 * Audit logging
 * Admin monitoring
 * Excel export
+
+---
+
+## 3.1 Fee Design Implementation
+
+Backend fee calculation uses database master data, not mobile/frontend hardcode:
+
+```text
+m_fee_rules -> transaction_item_fee_details
+m_service_document_requirements -> transaction_item_document_checklists
+```
+
+When a transaction is created, master fee/checklist rows are copied into transaction snapshot tables. `defaultAmount` keeps the master value at creation time, while `amount` is the transaction value used for totals and future FE Admin edits. Initial seed data uses `provinceCode = JABAR`, but the schema supports additional provinces/cities through new master rows.
 
 ---
 

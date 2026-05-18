@@ -22,7 +22,8 @@ Main use cases:
 * Manage customer data
 * Manage vehicle data
 * Add multiple vehicles in one transaction
-* Input estimated price and DP
+* Preview backend-generated fee estimates and document checklist
+* Input DP
 * Monitor transaction workflow
 * Update transaction status
 * Share invoice PDF and tracking link via WhatsApp
@@ -51,7 +52,7 @@ The mobile app must prioritize:
 * low learning curve
 * operational usability
 
-Users are expected to operate the app while serving customers directly, so transaction creation must be fast and clear.
+Users are expected to operate the app while serving customers directly, so transaction creation must be fast and clear. Fee components come from the backend `m_fee_rules` master data and are shown as input fields initialized with default values. Mobile users can type the actual PKB/denda/opsen/SWDKLLJ/PNBP values from the tax notice; Jasa Biro comes from tenant pricing configuration.
 
 Target transaction creation time:
 

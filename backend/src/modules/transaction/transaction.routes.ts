@@ -7,6 +7,7 @@ import {
   createTransactionSchema,
   updateTransactionStatusSchema,
   finalizeTransactionSchema,
+  updateDocumentChecklistSchema,
 } from './transaction.schema';
 import { createPaymentSchema } from '../payment/payment.schema';
 
@@ -15,11 +16,13 @@ const router = Router();
 router.use(authMiddleware, subscriptionMiddleware);
 
 router.get('/', TransactionController.list);
+router.get('/requirements', TransactionController.getRequirements);
 router.post('/', validate(createTransactionSchema), TransactionController.create);
 router.get('/:id', TransactionController.getOne);
 router.patch('/:id/status', validate(updateTransactionStatusSchema), TransactionController.updateStatus);
 router.post('/:id/finalize', validate(finalizeTransactionSchema), TransactionController.finalize);
 router.post('/:id/close', TransactionController.close);
+router.patch('/:id/document-checklist/:checklistId', validate(updateDocumentChecklistSchema), TransactionController.updateDocumentChecklist);
 router.get('/:id/invoice', TransactionController.getInvoice);
 
 // Payments nested under transactions

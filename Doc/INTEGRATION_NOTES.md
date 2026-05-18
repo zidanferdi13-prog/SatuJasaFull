@@ -1,7 +1,7 @@
 # Integration Notes — STNK Bureau SaaS
 
 > Source of truth: `backend/README.md` and `frontend/README.md`  
-> Last audit: 2026-05-14
+> Last audit: 2026-05-17
 
 ---
 
@@ -103,12 +103,22 @@ GET /transactions?page=1&limit=20&search=B1234&status=ON_PROCESS&branchId=&start
 ```
 Frontend: `transactionService.list(filters)` → returns `{ data: Transaction[], meta: ApiMeta }`
 
+### Fee requirements
+```
+GET /transactions/requirements?serviceTypeId=<uuid>&vehicleTypeCode=MOTOR&provinceCode=JABAR
+→ 200: { feeRules, documentRequirements, totalDefaultAmount }
+```
+
+Mobile uses this endpoint to preview backend master fees and checklist documents. Fees are not hardcoded in mobile; JABAR is only the seeded default and other provinces are added by inserting more `m_fee_rules` rows.
+
 ### Create transaction
 ```
 POST /transactions
-Body: { customerId, branchId?, estimatedFinishDate?, notes?, items: [{ vehicleId, serviceTypeId, price, notes? }] }
+Body: { customerId, branchId?, estimatedFinishDate?, notes?, items: [{ vehicleId, serviceTypeId, vehicleTypeCode, provinceCode }] }
 → 201: { success, message, data: Transaction }
 ```
+
+Backend copies `m_fee_rules` into `transaction_item_fee_details` and `m_service_document_requirements` into `transaction_item_document_checklists`. `defaultAmount` is the immutable master snapshot; `amount` is the transaction value used for totals.
 
 ### Status transitions
 ```
