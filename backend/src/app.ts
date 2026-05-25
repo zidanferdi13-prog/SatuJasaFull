@@ -2,9 +2,11 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { errorMiddleware } from './shared/middleware/error.middleware';
+import { globalLimiter } from './shared/middleware/rate-limit.middleware';
+import { env } from './config/env';
 import apiRouter from './routes';
 
 const app = express();
@@ -13,7 +15,7 @@ const app = express();
 
 app.use(helmet());
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3001').split(',');
+const allowedOrigins = env.ALLOWED_ORIGINS.split(',');
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -25,17 +27,11 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limit auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { success: false, message: 'Too many requests, please try again later' },
-});
-
 // ─── Body Parsing ─────────────────────────────────────────────────────────────
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // ─── Static Files ─────────────────────────────────────────────────────────────
 
@@ -44,11 +40,7 @@ app.use('/storage', express.static(path.join(process.cwd(), 'storage')));
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 
-app.use('/api/v1/auth', authLimiter, (req, res, next) => {
-  // Apply rate limit only to auth routes
-  next();
-});
-app.use('/api/v1', apiRouter);
+app.use('/api/v1', globalLimiter, apiRouter);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 

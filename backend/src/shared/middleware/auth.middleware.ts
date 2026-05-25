@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { env } from '../../config/env';
+import { runWithTenant } from '../../config/tenant-context';
+import { redis } from '../services/redis.service';
 import { sendError } from '../utils/response';
 
 export interface JwtPayload {
@@ -8,6 +11,8 @@ export interface JwtPayload {
   branch_id: string;
   role: string;
   tenant_code: string;
+  jti?: string;
+  exp?: number;
 }
 
 // Augment Express Request
@@ -19,20 +24,34 @@ declare global {
   }
 }
 
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.split(' ')[1]
+    : req.cookies?.token;
+
+  if (!token) {
     return sendError(res, 'Unauthorized: No token provided', 401);
   }
-
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_ACCESS_SECRET || 'access-secret'
+      env.JWT_ACCESS_SECRET
     ) as JwtPayload;
+    if (decoded.jti) {
+      const blocked = await redis.exists(`blocklist:${decoded.jti}`);
+      if (blocked) return sendError(res, 'Unauthorized: Token has been revoked', 401);
+    }
+
     req.user = decoded;
-    next();
+    return runWithTenant(
+      {
+        tenantId: decoded.tenant_id,
+        userId: decoded.user_id,
+        role: decoded.role,
+      },
+      next
+    );
   } catch {
     return sendError(res, 'Unauthorized: Invalid or expired token', 401);
   }
@@ -72,7 +91,16 @@ export const subscriptionMiddleware = async (req: Request, res: Response, next: 
 // Legacy exports for backward compatibility
 export const UserPayload = undefined;
 export const tenantContext = (req: Request, res: Response, next: NextFunction) => {
-  next();
+  if (!req.user) return next();
+
+  return runWithTenant(
+    {
+      tenantId: req.user.tenant_id,
+      userId: req.user.user_id,
+      role: req.user.role,
+    },
+    next
+  );
 };
 export const roleCheck = (roles: string[]) => roleMiddleware(...roles);
 export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {

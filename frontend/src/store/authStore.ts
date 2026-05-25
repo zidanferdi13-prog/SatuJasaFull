@@ -35,7 +35,7 @@ interface AuthStore {
   refreshSession: () => Promise<boolean>;
 }
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
+export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   token: null,
   refreshToken: null,
@@ -49,12 +49,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   setToken: (token) => {
     if (typeof window !== 'undefined') {
-      if (token) {
-        localStorage.setItem('token', token);
-        document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
-      } else {
-        localStorage.removeItem('token');
-        document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
+      if (!token) {
+        localStorage.removeItem('user');
       }
     }
     set({ token, isAuthenticated: !!token });
@@ -66,10 +62,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   logout: () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-      document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
     }
     set({
       user: null,
@@ -82,11 +75,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   initFromStorage: () => {
     if (typeof window === 'undefined') return;
-    const token = localStorage.getItem('token');
-    const refreshToken = localStorage.getItem('refreshToken');
     const rawUser = localStorage.getItem('user');
-    if (token) set({ token, isAuthenticated: true });
-    if (refreshToken) set({ refreshToken });
     if (rawUser) {
       try {
         set({ user: JSON.parse(rawUser) });
@@ -98,19 +87,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   refreshSession: async (): Promise<boolean> => {
-    const { refreshToken } = get();
-    if (!refreshToken) return false;
     try {
-      const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-        refreshToken,
-      });
+      const { data } = await axios.post(
+        `${API_BASE_URL}/auth/refresh`,
+        {},
+        { withCredentials: true }
+      );
       const newToken: string = data.data?.accessToken ?? data.data?.token ?? '';
-      const newRefreshToken: string = data.data?.refreshToken ?? refreshToken;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('token', newToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-        document.cookie = `token=${newToken}; path=/; max-age=${60 * 60 * 24}; SameSite=Lax`;
-      }
+      const newRefreshToken: string | null = data.data?.refreshToken ?? null;
       set({ token: newToken, refreshToken: newRefreshToken, isAuthenticated: true });
       return true;
     } catch {

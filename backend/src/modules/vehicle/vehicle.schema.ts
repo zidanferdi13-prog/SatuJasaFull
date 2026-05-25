@@ -10,6 +10,7 @@ export const createVehicleSchema = z.object({
     engineNumber: z.string().optional(),
     chassisNumber: z.string().optional(),
     registrationYear: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
+    stnkExpiryDate: z.string().datetime().optional(),
   }),
 });
 
@@ -22,5 +23,6 @@ export const updateVehicleSchema = z.object({
     engineNumber: z.string().optional(),
     chassisNumber: z.string().optional(),
     registrationYear: z.number().int().optional(),
+    stnkExpiryDate: z.string().datetime().optional(),
   }),
 });

@@ -1,9 +1,10 @@
 import { Queue, Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
 import prisma from '../../config/prisma';
+import { env } from '../../config/env';
 import logger from '../logger';
 
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const connection = new IORedis(env.REDIS_URL, {
   maxRetriesPerRequest: null,
 });
 
@@ -15,7 +16,6 @@ export const enqueueWhatsApp = async (
   message: string,
   mediaUrl?: string
 ) => {
-  // Insert DB record first
   const record = await prisma.whatsappQueue.create({
     data: { tenantId, phone, message, mediaUrl, status: 'PENDING' },
   });
@@ -27,23 +27,67 @@ export const enqueueWhatsApp = async (
   );
 };
 
+const postForm = async (url: string, body: URLSearchParams, headers: Record<string, string>) => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body,
+  });
+
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`WhatsApp provider returned ${response.status}: ${text}`);
+  }
+
+  return text;
+};
+
+const sendViaFonnte = async (phone: string, message: string, mediaUrl?: string) => {
+  const token = env.WHATSAPP_API_TOKEN ?? env.WHATSAPP_API_KEY;
+  if (!env.WHATSAPP_API_URL || !token) {
+    throw new Error('WHATSAPP_API_URL and WHATSAPP_API_TOKEN are required for Fonnte');
+  }
+
+  const body = new URLSearchParams({ target: phone, message });
+  if (mediaUrl) body.set('url', mediaUrl);
+
+  return postForm(env.WHATSAPP_API_URL, body, { Authorization: token });
+};
+
+const sendViaWablas = async (phone: string, message: string, mediaUrl?: string) => {
+  const token = env.WHATSAPP_API_TOKEN ?? env.WHATSAPP_API_KEY;
+  if (!env.WHATSAPP_API_URL || !token) {
+    throw new Error('WHATSAPP_API_URL and WHATSAPP_API_TOKEN are required for Wablas');
+  }
+
+  const body = new URLSearchParams({ phone, message });
+  if (mediaUrl) body.set('image', mediaUrl);
+
+  return postForm(env.WHATSAPP_API_URL, body, { Authorization: token });
+};
+
+const sendWhatsApp = async (phone: string, message: string, mediaUrl?: string) => {
+  if (env.WHATSAPP_PROVIDER === 'none') {
+    logger.info(`[WA:dry-run] To: ${phone} | ${message.substring(0, 60)}`);
+    return;
+  }
+
+  if (env.WHATSAPP_PROVIDER === 'fonnte') {
+    await sendViaFonnte(phone, message, mediaUrl);
+    return;
+  }
+
+  await sendViaWablas(phone, message, mediaUrl);
+};
+
 export const initializeWhatsAppWorker = () => {
   const worker = new Worker(
     'whatsapp-notifications',
     async (job: Job) => {
-      const { id, phone, message } = job.data;
+      const { id, phone, message, mediaUrl } = job.data;
 
       try {
-        // TODO: Replace with actual WhatsApp API integration
-        // For MVP, log and mark as sent
-        logger.info(`[WA] To: ${phone} | ${message.substring(0, 60)}`);
-
-        if (process.env.WHATSAPP_API_URL && process.env.WHATSAPP_API_KEY) {
-          // Placeholder for real integration
-          // await axios.post(process.env.WHATSAPP_API_URL, { phone, message }, {
-          //   headers: { 'x-api-key': process.env.WHATSAPP_API_KEY }
-          // });
-        }
+        await sendWhatsApp(phone, message, mediaUrl);
 
         await prisma.whatsappQueue.update({
           where: { id },
@@ -58,7 +102,7 @@ export const initializeWhatsAppWorker = () => {
             attempts: { increment: 1 },
           },
         });
-        throw error; // rethrow so BullMQ handles retry
+        throw error;
       }
     },
     { connection, concurrency: 5, limiter: { max: 10, duration: 1000 } }

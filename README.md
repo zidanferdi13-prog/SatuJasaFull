@@ -2,7 +2,7 @@
 
 Multi-tenant SaaS platform untuk mengelola jasa perpanjangan STNK, balik nama, dan pergantian kepemilikan kendaraan.
 
-## 🚀 Quick Start with Docker (Recommended)
+## Quick Start with Docker (Recommended)
 
 ```bash
 docker-compose up
@@ -11,8 +11,8 @@ docker-compose up
 Ini akan start semua services:
 - Backend API: `http://localhost:3000`
 - Frontend Dashboard: `http://localhost:3001`
-- PostgreSQL Database (dengan migrations & seed data)
-- Redis Cache
+- PostgreSQL Database
+- Redis Cache / Queue
 
 See `DOCKER-QUICKSTART.md` untuk lebih detail.
 
@@ -20,14 +20,14 @@ See `DOCKER-QUICKSTART.md` untuk lebih detail.
 
 ```
 ├── backend/              # Node.js Express API Server
-├── frontend/             # React/Next.js Admin Dashboard
+├── frontend/             # Next.js Admin Dashboard
 ├── mobile/               # React Native Mobile App (Expo)
-├── docker-compose.yml    # Complete Docker orchestration
-├── ARCHITECTURE.md       # System Architecture & Design (50+ pages)
+├── docker-compose.yml    # Docker orchestration
+├── ARCHITECTURE.md       # System Architecture & Design
 ├── DATABASE.md           # Database Schema Documentation
 ├── SETUP.md              # Manual Development Setup
-├── DOCKER.md             # Docker Complete Guide
-├── TESTING.md            # End-to-End Testing Guide
+├── DOCKER.md             # Docker Guide
+├── TESTING.md            # Testing Guide
 └── DOCKER-QUICKSTART.md  # Docker Quick Start
 ```
 
@@ -36,61 +36,72 @@ See `DOCKER-QUICKSTART.md` untuk lebih detail.
 ### Prerequisites
 - Node.js 18+
 - PostgreSQL 14+
+- Redis 7+
 - npm/yarn
 
 ### Backend Setup
 ```bash
 cd backend
 npm install
-npm run migrate:seed   # Create database + test data
-npm run dev           # Start on http://localhost:3000
+npm run migrate:seed
+npm run dev
 ```
 
 ### Frontend Setup
 ```bash
 cd frontend
 npm install
-npm run dev           # Start on http://localhost:3001
+npm run dev
 ```
 
 ### Mobile Setup
 ```bash
 cd mobile
 npm install
-npm run dev           # Choose iOS/Android/Web simulator
+npm run dev
 ```
 
-## ✨ Features Implemented
+## Features Implemented
 
-### Backend (100% Complete)
-- ✅ PostgreSQL with multi-tenant architecture (13 tables)
-- ✅ JWT authentication (access + refresh tokens)
-- ✅ Transaction CRUD with automatic customer creation
-- ✅ Document tracking (5-stage workflow)
-- ✅ WhatsApp notifications (Twilio ready)
-- ✅ Revenue calculation with margins
-- ✅ Public tracking endpoint (no auth required)
-- ✅ Role-based access control (ADMIN, OWNER, STAFF)
+### Backend
+- PostgreSQL with multi-tenant architecture (24 Prisma models)
+- Role-based access control: `SUPER_ADMIN`, `OWNER`, `ADMIN`
+- JWT authentication with HttpOnly cookie support for web clients
+- Refresh token rotation with hashed token sessions and reuse detection
+- Redis-backed token revocation blocklist
+- Global, auth, register tenant, refresh token, and public tracking rate limiters
+- Tenant isolation through Prisma extension and AsyncLocalStorage context
+- Soft delete support for core business models
+- Transaction CRUD with automatic customer creation
+- Transaction pricing, fee details, payment, refund, and status workflow
+- Public tracking endpoint without authentication
+- WhatsApp notifications with provider modes: `none`, `fonnte`, `wablas`
+- Transaction document upload endpoints for JPEG, PNG, and PDF files up to 5MB
+- STNK expiry reminder job for H-30, H-14, H-7, and H-1
+- BullMQ repeatable scheduler for daily backend jobs
+- Expo push notification service and device token registration endpoint
+- Vitest + Supertest critical backend tests
 
-### Mobile App (100% Complete)
-- ✅ Login screen (pre-filled test credentials)
-- ✅ Dashboard (revenue, pending count, quick actions)
-- ✅ New Transaction form (customer, service, pricing)
-- ✅ Transaction history (status badges, pull-refresh)
-- ✅ Settings (profile, logout)
-- ✅ Bottom tab navigation
-- ✅ Zustand state management
-- ✅ Axios API client
+### Mobile App
+- Login screen
+- Dashboard with revenue, pending count, and quick actions
+- New transaction form
+- Transaction history with status badges and pull-refresh
+- Settings pages
+- Bottom tab navigation
+- Zustand state management
+- Axios API client
+- Push notification registration through Expo Notifications
 
-### Frontend Admin Dashboard (100% Complete)
-- ✅ Dashboard (stats, bureau overview)
-- ✅ Navigation & layout
-- ✅ Zustand auth store with localStorage
-- ✅ Axios API client with token injection
-- ✅ Modern styling (responsive, ready for Tailwind)
-- ✅ Bureau list & status display
+### Frontend Admin Dashboard
+- Dashboard and bureau overview
+- Navigation and layout
+- Zustand auth store
+- Axios API client with credentials/cookie support
+- Responsive styling using the current CSS approach
+- Bureau list and status display
 
-## 📋 Test Credentials (Pre-seeded)
+## Test Credentials (Pre-seeded)
 
 **Admin User:**
 - Email: `admin@stnkbureau.local`
@@ -114,11 +125,12 @@ npm run dev           # Choose iOS/Android/Web simulator
 ├─────────────────────────────────────────────────────┤
 │                                                     │
 │  Mobile App          Web Admin          Backend API │
-│  (React Native)      (React/Next.js)    (Express)  │
-│  ├─ Login            ├─ Dashboard       ├─ Auth    │
-│  ├─ Transactions     ├─ Bureaus         ├─ Trans   │
-│  ├─ History          ├─ Transactions    ├─ Track   │
-│  └─ Settings         └─ Analytics       └─ Notify  │
+│  (React Native)      (Next.js)         (Express)   │
+│  ├─ Login            ├─ Dashboard      ├─ Auth     │
+│  ├─ Transactions     ├─ Bureaus        ├─ Trans    │
+│  ├─ History          ├─ Transactions   ├─ Track    │
+│  ├─ Push Token       └─ Settings       └─ Notify   │
+│  └─ Settings                                      │
 │        │                    │                 │     │
 │        └────────┬───────────┴─────────────────┘     │
 │                 │                                   │
@@ -126,16 +138,17 @@ npm run dev           # Choose iOS/Android/Web simulator
 │        │  PostgreSQL DB    │                       │
 │        │  (Multi-tenant)   │                       │
 │        │                   │                       │
+│        │  - Tenants        │                       │
 │        │  - Users          │                       │
-│        │  - Bureaus        │                       │
+│        │  - Vehicles       │                       │
 │        │  - Transactions   │                       │
-│        │  - Tracking       │                       │
 │        │  - Documents      │                       │
+│        │  - Device Tokens  │                       │
 │        └───────────────────┘                       │
 │                                                     │
 │        ┌────────────────────┐                      │
-│        │  Redis Cache       │                      │
-│        │  (for messages)    │                      │
+│        │  Redis             │                      │
+│        │  (queues/blocklist)│                      │
 │        └────────────────────┘                      │
 │                                                     │
 └─────────────────────────────────────────────────────┘
@@ -143,35 +156,30 @@ npm run dev           # Choose iOS/Android/Web simulator
 
 ### Multi-Tenancy Strategy
 - **Shared Database**: Single PostgreSQL instance
-- **Row-Level Isolation**: Every table has `bureau_id` column
-- **Security**: Automatic filtering by `bureau_id` on all queries
-- **Data Privacy**: Each bureau only sees their own data
+- **Row-Level Isolation**: Tenant-owned models use `tenantId`
+- **Security**: Prisma extension injects tenant filtering from request context
+- **Data Privacy**: Each tenant only sees their own data unless explicitly handled as `SUPER_ADMIN`
 
 ### Authentication Flow
 1. User login with email + password
-2. Backend validates password (bcryptjs)
-3. Generates JWT tokens (access + refresh)
-4. Mobile/Web stores tokens locally
-5. All API requests include JWT in Authorization header
-6. Backend validates token and extracts `bureau_id`
+2. Backend validates password with bcryptjs
+3. Backend issues JWT access and refresh tokens
+4. Web clients receive HttpOnly cookies; mobile/API clients can use bearer tokens
+5. Refresh tokens are stored server-side as SHA-256 hashes and rotated on refresh
+6. Logout revokes the current access token through Redis blocklist
+7. Backend validates token and extracts `tenant_id`, `user_id`, and role
 
-### Document Tracking Flow
+### Document and Notification Flow
 ```
 Transaction Created
     ↓
-[Stage 1] Dokumen Diterima (Document Received)
+Document checklist / upload can be managed per transaction item
     ↓
-[Stage 2] Verifikasi (Verification)
+Status updates are logged and visible through public tracking
     ↓
-[Stage 3] Processing
+Customer notifications are queued through WhatsApp provider
     ↓
-[Stage 4] Ready Ambil (Ready for Pickup)
-    ↓
-[Stage 5] Completed
-
-Customer receives tracking link after transaction creation
-Customer can monitor progress without login
-Bureau updates stage → WhatsApp notification sent to customer
+Staff/owner push notifications can be sent through Expo Push API
 ```
 
 ## Technology Stack
@@ -182,16 +190,18 @@ Bureau updates stage → WhatsApp notification sent to customer
 | Frontend | React + Next.js | 18.x + 14.x |
 | Mobile | React Native + Expo | 18.x + 50.x |
 | Database | PostgreSQL | 15 |
-| Cache | Redis | 7 |
+| Cache / Queue | Redis + BullMQ | 7.x |
 | Auth | JWT + bcryptjs | 9.x + 2.x |
-| Messaging | Twilio | 3.x |
+| Messaging | WhatsApp provider (`none`, `fonnte`, `wablas`) | configurable |
+| Push Notification | Expo Push API | configurable |
 | State Mgmt | Zustand | 4.x |
 | HTTP Client | Axios | 1.x |
+| Testing | Vitest + Supertest | configured |
 
 ## Documentation
 
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Complete system design (50+ pages)
-  - Database schema with all 13 tables
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System design
+  - Database schema
   - API routes and endpoints
   - Multi-tenancy strategy
   - Data flow diagrams
@@ -210,7 +220,7 @@ Bureau updates stage → WhatsApp notification sent to customer
   - Troubleshooting
   - Database verification
 
-- **[DOCKER.md](./DOCKER.md)** - Complete Docker guide (15,000+ words)
+- **[DOCKER.md](./DOCKER.md)** - Docker guide
   - Service setup and configuration
   - Building custom images
   - Environment variables
@@ -225,7 +235,7 @@ Bureau updates stage → WhatsApp notification sent to customer
   - Test credentials
   - Common issues
 
-- **[TESTING.md](./TESTING.md)** - Complete testing guide
+- **[TESTING.md](./TESTING.md)** - Testing guide
   - API endpoint testing
   - Mobile app testing
   - Frontend testing
@@ -237,17 +247,25 @@ Bureau updates stage → WhatsApp notification sent to customer
 
 ### Authentication (Public)
 ```
-POST /api/v1/auth/login              → Login & get JWT
-POST /api/v1/auth/logout             → Logout
-POST /api/v1/auth/refresh            → Refresh token
+POST /api/v1/auth/login              → Login and set auth cookies
+POST /api/v1/auth/logout             → Logout and revoke current token
+POST /api/v1/auth/refresh            → Rotate refresh token
+```
+
+### Notifications (Protected)
+```
+POST /api/v1/notifications/devices   → Register device push token
 ```
 
 ### Transactions (Protected)
 ```
-POST /api/v1/transactions            → Create transaction
-GET  /api/v1/transactions            → List transactions
-GET  /api/v1/transactions/:id        → Get transaction details
-PUT  /api/v1/transactions/:id        → Update transaction status
+POST /api/v1/transactions                                → Create transaction
+GET  /api/v1/transactions                                → List transactions
+GET  /api/v1/transactions/:id                            → Get transaction details
+PUT  /api/v1/transactions/:id                            → Update transaction status
+GET  /api/v1/transactions/:id/documents                  → List transaction documents
+POST /api/v1/transactions/:id/items/:itemId/documents    → Upload item document
+DELETE /api/v1/transactions/:id/documents/:documentId    → Delete transaction document
 ```
 
 ### Tracking (Public)
@@ -256,7 +274,7 @@ GET /api/v1/tracking/:token          → Get tracking status
 GET /api/v1/tracking/:token/history  → Get tracking history
 ```
 
-### Admin (Admin Only)
+### Admin / Tenant Management
 ```
 GET  /api/v1/admin/bureaus           → List all bureaus
 POST /api/v1/admin/bureaus           → Create bureau
@@ -265,7 +283,7 @@ GET  /api/v1/admin/bureaus/:id       → Bureau details
 
 ## Getting Started
 
-### Option 1: Docker (Recommended - 1 command)
+### Option 1: Docker (Recommended)
 ```bash
 docker-compose up
 ```
@@ -286,13 +304,13 @@ cd mobile && npm install && npm run dev
 
 1. **Make Changes**: Edit code in respective folders
 2. **Test Changes**:
-   - Backend: API endpoints via curl or Postman
-   - Frontend: Browser dev tools
-   - Mobile: Simulator interactions
+   - Backend: API endpoints via curl/Postman and `npm run test`
+   - Frontend: Browser dev tools and `npm run typecheck`
+   - Mobile: Simulator/device interactions and `npm run typecheck`
 
 3. **Commit & Push**:
    ```bash
-   git add .
+   git add <files>
    git commit -m "your message"
    git push origin branch-name
    ```
@@ -318,6 +336,7 @@ npm run build                        # Build for production
 npm start                            # Run production server
 npm run lint                         # Run ESLint
 npm run typecheck                    # Run TypeScript check
+npm run test                         # Run backend tests
 ```
 
 ### Frontend
@@ -337,6 +356,7 @@ npm run dev                          # Start Expo dev server
 npm run android                      # Open Android emulator
 npm run ios                          # Open iOS simulator
 npm run web                          # Start web version
+npm run typecheck                    # Run TypeScript check
 ```
 
 ## Troubleshooting
@@ -367,65 +387,66 @@ docker-compose exec backend npm run seed
 ### API Connection Issues
 ```bash
 # Test backend health
-curl http://localhost:3000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@test.com","password":"test"}'
+curl http://localhost:3000/health
 ```
 
 ## Key Implementation Details
 
 ### Multi-Tenancy
-- All data filtered by `bureau_id` automatically
-- No cross-tenant data leakage
-- ADMIN role can see all bureaus
-- OWNER/STAFF roles see only their bureau
+- Tenant-owned data is filtered by `tenantId` automatically in Prisma queries
+- Prisma extension and AsyncLocalStorage provide request-scoped tenant context
+- `SUPER_ADMIN` operations can be handled separately from tenant-scoped operations
+- `OWNER` and `ADMIN` operate within their tenant context
 
 ### Authentication
 - **Access Token**: 15 minutes expiry
 - **Refresh Token**: 7 days expiry
 - **Password**: bcryptjs with 10 salt rounds
-- **Storage**: localStorage (browser), Zustand (mobile)
+- **Web Storage**: HttpOnly cookies set by backend
+- **Mobile/API Auth**: bearer token compatible
+- **Revocation**: Redis blocklist for logged-out access tokens
+- **Refresh Rotation**: server-side hashed refresh token sessions
 
 ### Transaction Pricing
 ```
-Final Price = (Base Price + Margin) - Discount
-Margin = Base Price × Margin Percentage
+Remaining Amount = Final Total - DP Amount
+Refund Amount = max(DP Amount - Final Total, 0)
 ```
 
-### Document Stages
-```
-1. Dokumen Diterima       - Initial stage when transaction created
-2. Verifikasi             - Bureau verifying documents
-3. Processing             - Active processing stage
-4. Ready Ambil            - Documents ready for customer pickup
-5. Completed              - Transaction completed
-```
+### Documents and STNK Reminder
+- Transaction item documents support JPEG, PNG, and PDF uploads up to 5MB
+- Document records are soft-deletable
+- Vehicle records can store `stnkExpiryDate`
+- Daily STNK reminder job targets H-30, H-14, H-7, and H-1
 
 ## Performance Considerations
 
-- Database indexes on `bureau_id`, `created_at`, `status`
-- Redis for message queuing
-- JWT tokens for stateless authentication
-- Pagination for transaction lists (default 20 per page)
+- Database indexes on tenant, status, tracking, invoice, expiry, and soft-delete fields
+- Redis for queueing, scheduled jobs, and token blocklist
+- Pagination for list endpoints
 - Connection pooling for PostgreSQL
 
 ## Security Features
 
-- ✅ SQL injection prevention (parameterized queries)
-- ✅ XSS protection (React/Next.js escaping)
-- ✅ CSRF tokens (stateless JWT)
-- ✅ Password hashing (bcryptjs)
-- ✅ Multi-tenancy isolation
-- ✅ Rate limiting ready (infrastructure prepared)
-- ✅ HTTPS ready (Docker + Nginx SSL config included)
+- SQL injection prevention through Prisma parameterized queries
+- Password hashing with bcryptjs
+- JWT secrets validated at startup with no fallback secret
+- HttpOnly cookie support for web authentication
+- Refresh token rotation and reuse detection
+- Redis-backed token revocation
+- Multi-tenancy isolation
+- Rate limiting for global API, auth, refresh, register tenant, and tracking routes
+- Soft delete support for audit-sensitive data
+- Docker Compose database/cache credentials sourced from environment variables
 
 ## Next Steps
 
-1. **Run the System**: `docker-compose up`
-2. **Read ARCHITECTURE.md** for deep dive into design
-3. **Follow TESTING.md** to test end-to-end
-4. **Review DOCKER.md** for production deployment
-5. **Configure Twilio** (optional) for WhatsApp notifications
+1. Complete remaining Phase B hardening tasks from `Doc/IMPLEMENTATION_PROGRESS_1905.md`
+2. Add minimal CI pipeline
+3. Configure Sentry for backend and mobile
+4. Add privacy policy and account deletion endpoint
+5. Add Android adaptive icon
+6. Harden backend Dockerfile and CORS/CSP settings
 
 ## License
 
@@ -441,4 +462,4 @@ For issues or questions:
 
 ---
 
-**Status**: Production-ready MVP with all core features implemented and tested ✅
+**Status**: Phase B hardening in progress. See `Doc/IMPLEMENTATION_PROGRESS_1905.md` for the current audit roadmap status.

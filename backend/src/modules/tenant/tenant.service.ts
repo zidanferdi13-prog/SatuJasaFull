@@ -1,4 +1,5 @@
 import prisma from '../../config/prisma';
+import { env } from '../../config/env';
 import { getPagination } from '../../shared/utils/pagination';
 import path from 'path';
 import fs from 'fs';
@@ -111,11 +112,7 @@ export class TenantService {
       impersonated_by: adminUserId,
     };
 
-    const token = jwt.default.sign(
-      payload,
-      process.env.JWT_ACCESS_SECRET || 'access-secret',
-      { expiresIn: '1h' } as any
-    );
+    const token = jwt.default.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: '1h' } as any);
 
     return { accessToken: token, tenant: { id: tenant.id, name: tenant.name, code: tenant.code } };
   }

@@ -1,13 +1,17 @@
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 import prisma from '../../config/prisma';
+import { env } from '../../config/env';
+import logger from '../../shared/logger';
 import { BranchService } from '../branch/branch.service';
 import { LoginResult } from './auth.types';
 
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'access-secret';
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-secret';
-const ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
-const REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+const ACCESS_SECRET = env.JWT_ACCESS_SECRET;
+const REFRESH_SECRET = env.JWT_REFRESH_SECRET;
+const ACCESS_EXPIRES = env.JWT_ACCESS_EXPIRES_IN;
+const REFRESH_EXPIRES = env.JWT_REFRESH_EXPIRES_IN;
 
 const buildPayload = (user: any, tenant: any) => ({
   user_id: user.id,
@@ -17,14 +21,45 @@ const buildPayload = (user: any, tenant: any) => ({
   tenant_code: tenant.code,
 });
 
-const signTokens = (payload: object) => ({
-  accessToken: jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_EXPIRES as any }),
-  refreshToken: jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES as any }),
+const hashToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
+
+const getJwtExpiry = (token: string) => {
+  const decoded = jwt.decode(token) as { exp?: number } | null;
+  if (!decoded?.exp) throw new Error('Token expiry is missing');
+  return new Date(decoded.exp * 1000);
+};
+
+const signTokens = (payload: object, family = uuidv4()) => ({
+  accessToken: jwt.sign({ ...payload, jti: uuidv4() }, ACCESS_SECRET, { expiresIn: ACCESS_EXPIRES as any }),
+  refreshToken: jwt.sign({ ...payload, jti: uuidv4(), family }, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRES as any }),
   expiresIn: ACCESS_EXPIRES,
+  family,
+});
+
+const persistRefreshSession = async (
+  userId: string,
+  tenantId: string,
+  refreshToken: string,
+  family: string,
+  meta?: { ipAddress?: string; userAgent?: string }
+) => prisma.refreshTokenSession.create({
+  data: {
+    userId,
+    tenantId,
+    tokenHash: hashToken(refreshToken),
+    family,
+    expiresAt: getJwtExpiry(refreshToken),
+    ipAddress: meta?.ipAddress,
+    userAgent: meta?.userAgent,
+  },
 });
 
 export class AuthService {
-  static async login(email: string, password: string): Promise<LoginResult> {
+  static async login(
+    email: string,
+    password: string,
+    meta?: { ipAddress?: string; userAgent?: string }
+  ): Promise<LoginResult> {
     const user = await prisma.user.findUnique({
       where: { email },
       include: { tenant: true },
@@ -62,10 +97,13 @@ export class AuthService {
 
     const userWithBranch = { ...user, branchId };
     const payload = buildPayload(userWithBranch, user.tenant);
-    const tokens = signTokens(payload);
+    const { accessToken, refreshToken, expiresIn, family } = signTokens(payload);
+    await persistRefreshSession(user.id, user.tenantId, refreshToken, family, meta);
 
     return {
-      ...tokens,
+      accessToken,
+      refreshToken,
+      expiresIn,
       user: {
         id: user.id,
         name: user.name,
@@ -79,12 +117,38 @@ export class AuthService {
     };
   }
 
-  static async refresh(refreshToken: string): Promise<LoginResult> {
+  static async refresh(
+    refreshToken: string,
+    meta?: { ipAddress?: string; userAgent?: string }
+  ): Promise<LoginResult> {
     let decoded: any;
     try {
       decoded = jwt.verify(refreshToken, REFRESH_SECRET);
     } catch {
       throw Object.assign(new Error('Invalid refresh token'), { statusCode: 401 });
+    }
+
+    const tokenHash = hashToken(refreshToken);
+    const session = await prisma.refreshTokenSession.findUnique({ where: { tokenHash } });
+
+    if (!session) {
+      throw Object.assign(new Error('Invalid refresh token'), { statusCode: 401 });
+    }
+
+    if (session.revokedAt) {
+      await prisma.refreshTokenSession.updateMany({
+        where: { family: session.family, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw Object.assign(new Error('Refresh token reuse detected'), { statusCode: 401 });
+    }
+
+    if (session.expiresAt < new Date()) {
+      await prisma.refreshTokenSession.update({
+        where: { id: session.id },
+        data: { revokedAt: new Date() },
+      });
+      throw Object.assign(new Error('Refresh token expired'), { statusCode: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -105,10 +169,17 @@ export class AuthService {
 
     const userWithBranch = { ...user, branchId };
     const payload = buildPayload(userWithBranch, user.tenant);
-    const tokens = signTokens(payload);
+    const { accessToken, refreshToken: nextRefreshToken, expiresIn, family } = signTokens(payload, session.family);
+    const nextSession = await persistRefreshSession(user.id, user.tenantId, nextRefreshToken, family, meta);
+    await prisma.refreshTokenSession.update({
+      where: { id: session.id },
+      data: { revokedAt: new Date(), replacedById: nextSession.id },
+    });
 
     return {
-      ...tokens,
+      accessToken,
+      refreshToken: nextRefreshToken,
+      expiresIn,
       user: {
         id: user.id,
         name: user.name,
@@ -193,7 +264,13 @@ export class AuthService {
     planName: string;
     planPrice: number;
   }) {
-    console.log('Registering tenant with data:', data);
+    logger.info('Registering tenant', {
+      code: data.code,
+      name: data.name,
+      ownerEmail: data.ownerEmail,
+      planName: data.planName,
+      subscriptionMonths: data.subscriptionMonths,
+    });
     const hash = await bcrypt.hash(data.ownerPassword, 12);
     const subStart = new Date();
     const subEnd = new Date();

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { sendError } from '../utils/response';
+import { Sentry } from '../../config/sentry';
 import logger from '../logger';
 
 export const errorMiddleware = (
@@ -9,6 +10,13 @@ export const errorMiddleware = (
   _next: NextFunction
 ) => {
   logger.error({ message: err.message, stack: err.stack, path: req.path });
+
+  const status = err.statusCode || err.status || 500;
+  if (status >= 500) {
+    Sentry.captureException(err, {
+      tags: { path: req.path, method: req.method },
+    });
+  }
 
   if (err.name === 'ZodError') {
     return sendError(res, 'Validation error', 422, err.errors);
@@ -22,7 +30,6 @@ export const errorMiddleware = (
     return sendError(res, 'Record not found', 404);
   }
 
-  const status = err.statusCode || err.status || 500;
   const message = status < 500 || err.expose ? err.message : 'Internal server error';
   return sendError(res, message, status);
 };

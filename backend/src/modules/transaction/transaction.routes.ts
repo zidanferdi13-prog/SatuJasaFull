@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { TransactionController } from './transaction.controller';
+import { TransactionDocumentController } from './document.controller';
 import { PaymentController } from '../payment/payment.controller';
 import { authMiddleware, subscriptionMiddleware } from '../../shared/middleware/auth.middleware';
 import { validate } from '../../shared/middleware/validation.middleware';
@@ -12,6 +14,7 @@ import {
 import { createPaymentSchema } from '../payment/payment.schema';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.use(authMiddleware, subscriptionMiddleware);
 
@@ -24,6 +27,9 @@ router.post('/:id/finalize', validate(finalizeTransactionSchema), TransactionCon
 router.post('/:id/close', TransactionController.close);
 router.patch('/:id/document-checklist/:checklistId', validate(updateDocumentChecklistSchema), TransactionController.updateDocumentChecklist);
 router.get('/:id/invoice', TransactionController.getInvoice);
+router.get('/:id/documents', TransactionDocumentController.list);
+router.post('/:id/items/:itemId/documents', upload.single('file'), TransactionDocumentController.upload);
+router.delete('/:id/documents/:documentId', TransactionDocumentController.remove);
 
 // Payments nested under transactions
 router.get('/:id/payments', PaymentController.list);

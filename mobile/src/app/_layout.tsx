@@ -2,6 +2,10 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { AppProvider } from './AppProvider';
 import { useAuthStore } from '../store/authStore';
+import { registerPushToken } from '../shared/services/push';
+import { initializeSentry, Sentry } from '../shared/services/sentry';
+
+initializeSentry();
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -9,6 +13,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const isSubscriptionExpired = useAuthStore((s) => s.isSubscriptionExpired);
+
+  useEffect(() => {
+    if (user) registerPushToken().catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -32,7 +40,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <AppProvider>
       <AuthGuard>
@@ -60,4 +68,6 @@ export default function RootLayout() {
     </AppProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 

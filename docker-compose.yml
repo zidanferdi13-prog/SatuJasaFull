@@ -6,9 +6,8 @@ services:
     environment:
       POSTGRES_DB: stnk_bureau
       POSTGRES_USER: stnk_user
-      POSTGRES_PASSWORD: stnk_password_dev
-    ports:
-      - '5432:5432'
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -23,10 +22,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: stnk-redis
-    ports:
-      - '6379:6379'
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    restart: unless-stopped
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD-SHELL', 'redis-cli -a ${REDIS_PASSWORD} ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,8 +39,8 @@ services:
       dockerfile: backend/Dockerfile
     container_name: stnk-backend
     environment:
-      DATABASE_URL: postgresql://stnk_user:stnk_password_dev@postgres:5432/stnk_bureau
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://stnk_user:${POSTGRES_PASSWORD}@postgres:5432/stnk_bureau
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_ACCESS_EXPIRES_IN: 15m

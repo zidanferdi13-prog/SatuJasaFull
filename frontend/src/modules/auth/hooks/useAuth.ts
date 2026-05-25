@@ -12,9 +12,7 @@ export function useLogin() {
     onSuccess: (data) => {
       setToken(data.accessToken);
       setUser(data.user);
-      // Persist refresh token
       if (typeof window !== 'undefined') {
-        localStorage.setItem('refreshToken', data.refreshToken);
         localStorage.setItem('user', JSON.stringify(data.user));
       }
       useAuthStore.setState({ refreshToken: data.refreshToken });

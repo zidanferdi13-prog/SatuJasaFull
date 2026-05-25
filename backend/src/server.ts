@@ -1,12 +1,14 @@
 import 'dotenv/config';
+import { initializeSentry } from './config/sentry';
 import app from './app';
 import prisma from './config/prisma';
 import { initializeWhatsAppWorker } from './shared/services/whatsapp.service';
-import { runSubscriptionExpiryJob } from './jobs/subscription-expiry.job';
-import { runOverdueTransactionJob } from './jobs/overdue-transaction.job';
+import { initializeJobScheduler } from './jobs/scheduler';
 import logger from './shared/logger';
 
 const PORT = process.env.PORT || 3000;
+
+initializeSentry();
 
 const startServer = async () => {
   try {
@@ -18,15 +20,7 @@ const startServer = async () => {
     initializeWhatsAppWorker();
     logger.info('✓ WhatsApp worker initialized');
 
-    // Schedule daily jobs using simple interval (production would use cron)
-    const runDailyJobs = async () => {
-      await runSubscriptionExpiryJob().catch((e) => logger.error('[JOB ERROR]', e));
-      await runOverdueTransactionJob().catch((e) => logger.error('[JOB ERROR]', e));
-    };
-
-    // Run once on startup, then every 24 hours
-    runDailyJobs();
-    setInterval(runDailyJobs, 24 * 60 * 60 * 1000);
+    await initializeJobScheduler();
 
     app.listen(PORT, () => {
       logger.info(`✓ Server running on port ${PORT}`);

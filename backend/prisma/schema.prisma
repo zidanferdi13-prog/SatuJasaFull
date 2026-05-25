@@ -62,9 +62,13 @@ model Tenant {
   updatedAt           DateTime           @updatedAt
 
   users            User[]
+  refreshTokenSessions RefreshTokenSession[]
+  userDeviceTokens UserDeviceToken[]
   branches         Branch[]
   customers        Customer[]
+  vehicles         Vehicle[]
   transactions     Transaction[]
+  transactionDocuments TransactionDocument[]
   serviceTypes     ServiceType[]
   pricingRules     PricingRule[]
   masterFeeRules   MasterFeeRule[]
@@ -83,15 +87,17 @@ model Branch {
   name      String
   address   String?
   phone     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   users        User[]
   transactions Transaction[]
 
   @@index([tenantId])
+  @@index([deletedAt])
   @@map("branches")
 }
 
@@ -107,12 +113,16 @@ model User {
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
   branch    Branch?    @relation(fields: [branchId], references: [id])
   auditLogs AuditLog[]
+  refreshTokenSessions RefreshTokenSession[]
+  deviceTokens UserDeviceToken[]
 
   @@index([tenantId])
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -123,8 +133,9 @@ model Customer {
   phone     String
   email     String?
   address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   vehicles     Vehicle[]
@@ -132,11 +143,13 @@ model Customer {
 
   @@index([tenantId])
   @@index([phone])
+  @@index([deletedAt])
   @@map("customers")
 }
 
 model Vehicle {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
+  tenantId         String
   customerId       String
   plateNumber      String
   model            String?
@@ -145,13 +158,20 @@ model Vehicle {
   engineNumber     String?
   chassisNumber    String?
   registrationYear Int?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  stnkExpiryDate   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
 
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
   customer         Customer          @relation(fields: [customerId], references: [id])
   transactionItems TransactionItem[]
 
+  @@index([tenantId])
+  @@index([tenantId, plateNumber])
+  @@index([stnkExpiryDate])
   @@index([plateNumber])
+  @@index([deletedAt])
   @@map("vehicles")
 }
 
@@ -159,9 +179,10 @@ model ServiceType {
   id          String   @id @default(uuid())
   name        String
   description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
   // null tenantId = global service type managed by super admin
   tenantId String?
@@ -172,6 +193,7 @@ model ServiceType {
   masterFeeRules      MasterFeeRule[]
   documentRequirements MasterServiceDocumentRequirement[]
 
+  @@index([deletedAt])
   @@map("service_types")
 }
 
@@ -214,9 +236,10 @@ model MasterFeeRule {
   isEditable      Boolean  @default(true)
   isRequired      Boolean  @default(true)
   sortOrder       Int      @default(0)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
   tenant      Tenant?     @relation(fields: [tenantId], references: [id])
   serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
@@ -224,6 +247,7 @@ model MasterFeeRule {
   @@index([tenantId, provinceCode, serviceTypeId, vehicleTypeCode])
   @@index([tenantId, provinceCode, serviceTypeId, priceGroup])
   @@index([componentCode])
+  @@index([deletedAt])
   @@map("m_fee_rules")
 }
 
@@ -253,15 +277,17 @@ model PricingRule {
   serviceTypeId String
   price         Decimal  @db.Decimal(15, 2)
   marginAmount  Decimal  @db.Decimal(15, 2) @default(0)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id])
   serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
 
   @@unique([tenantId, serviceTypeId])
   @@index([tenantId])
+  @@index([deletedAt])
   @@map("pricing_rules")
 }
 
@@ -285,6 +311,7 @@ model Transaction {
   notes               String?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
+  deletedAt           DateTime?
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id])
   branch   Branch   @relation(fields: [branchId], references: [id])
@@ -299,6 +326,7 @@ model Transaction {
   @@index([status])
   @@index([invoiceNumber])
   @@index([trackingCode])
+  @@index([deletedAt])
   @@map("transactions")
 }
 
@@ -317,6 +345,7 @@ model TransactionItem {
   serviceType       ServiceType                        @relation(fields: [serviceTypeId], references: [id])
   feeDetails        TransactionItemFeeDetail[]
   documentChecklist TransactionItemDocumentChecklist[]
+  documents         TransactionDocument[]
 
   @@map("transaction_items")
 }
@@ -361,6 +390,28 @@ model TransactionItemDocumentChecklist {
   @@map("transaction_item_document_checklists")
 }
 
+model TransactionDocument {
+  id                String    @id @default(uuid())
+  tenantId          String
+  transactionItemId String
+  documentCode      String
+  fileName          String
+  fileUrl           String
+  mimeType          String
+  sizeBytes         Int
+  uploadedBy        String
+  createdAt         DateTime  @default(now())
+  deletedAt         DateTime?
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  transactionItem TransactionItem @relation(fields: [transactionItemId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([transactionItemId])
+  @@index([documentCode])
+  @@map("transaction_documents")
+}
+
 model Payment {
   id            String        @id @default(uuid())
   transactionId String
@@ -401,6 +452,49 @@ model TransactionLog {
   transaction Transaction @relation(fields: [transactionId], references: [id])
 
   @@map("transaction_logs")
+}
+
+model UserDeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String
+  token     String   @unique
+  platform  String
+  deviceId  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([isActive])
+  @@map("user_device_tokens")
+}
+
+model RefreshTokenSession {
+  id           String    @id @default(uuid())
+  userId       String
+  tenantId     String
+  tokenHash    String    @unique
+  family       String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([family])
+  @@index([expiresAt])
+  @@map("refresh_token_sessions")
 }
 
 model Subscription {

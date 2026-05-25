@@ -6,7 +6,7 @@ export class VehicleService {
     const { page, limit, skip } = getPagination(query.page, query.limit);
     const search = query.search as string | undefined;
 
-    const where: any = { customer: { tenantId } };
+    const where: any = { tenantId };
     if (search) {
       where.OR = [{ plateNumber: { contains: search, mode: 'insensitive' } }];
     }
@@ -26,7 +26,7 @@ export class VehicleService {
 
   static async findById(id: string, tenantId: string) {
     const vehicle = await prisma.vehicle.findFirst({
-      where: { id, customer: { tenantId } },
+      where: { id, tenantId },
       include: { customer: true },
     });
     if (!vehicle) throw Object.assign(new Error('Vehicle not found'), { statusCode: 404 });
@@ -39,7 +39,7 @@ export class VehicleService {
       where: { id: data.customerId, tenantId },
     });
     if (!customer) throw Object.assign(new Error('Customer not found'), { statusCode: 404 });
-    return prisma.vehicle.create({ data });
+    return prisma.vehicle.create({ data: { ...data, tenantId } });
   }
 
   static async update(id: string, tenantId: string, data: any) {

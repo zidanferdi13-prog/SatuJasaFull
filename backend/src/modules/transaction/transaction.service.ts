@@ -3,6 +3,7 @@ import { getPagination } from '../../shared/utils/pagination';
 import { generateInvoiceNumber, generateTrackingCode } from '../../shared/utils/invoice';
 import { STATUS_TRANSITIONS } from '../../shared/constants';
 import { enqueueWhatsApp } from '../../shared/services/whatsapp.service';
+import { sendPushToUsers } from '../../shared/services/push.service';
 import { BranchService } from '../branch/branch.service';
 
 const TX_INCLUDE = {
@@ -313,6 +314,20 @@ export class TransactionService {
         `Halo ${customer.name}, transaksi Anda dengan nomor ${invoiceNumber} telah dibuat. Pantau status: ${trackingUrl}`
       ).catch(() => {});
     }
+
+    const staffUsers = await prisma.user.findMany({
+      where: { tenantId, isActive: true, role: { in: ['OWNER', 'ADMIN'] } },
+      select: { id: true },
+    });
+    await sendPushToUsers(
+      tenantId,
+      staffUsers.map((user) => user.id),
+      {
+        title: 'Transaksi baru',
+        body: `Transaksi ${invoiceNumber} telah dibuat`,
+        data: { transactionId: tx.id, invoiceNumber },
+      }
+    ).catch(() => {});
 
     return tx;
   }
