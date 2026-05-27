@@ -332,6 +332,7 @@ model Transaction {
 
 model TransactionItem {
   id            String   @id @default(uuid())
+  tenantId      String
   transactionId String
   vehicleId     String
   serviceTypeId String
@@ -347,6 +348,8 @@ model TransactionItem {
   documentChecklist TransactionItemDocumentChecklist[]
   documents         TransactionDocument[]
 
+  @@index([tenantId])
+  @@index([tenantId, transactionId])
   @@map("transaction_items")
 }
 
@@ -414,6 +417,7 @@ model TransactionDocument {
 
 model Payment {
   id            String        @id @default(uuid())
+  tenantId      String
   transactionId String
   amount        Decimal       @db.Decimal(15, 2)
   type          PaymentType
@@ -423,6 +427,8 @@ model Payment {
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
 
+  @@index([tenantId])
+  @@index([tenantId, transactionId])
   @@index([transactionId])
   @@map("payments")
 }
@@ -442,6 +448,7 @@ model InvoiceSequence {
 
 model TransactionLog {
   id            String   @id @default(uuid())
+  tenantId      String
   transactionId String
   fromStatus    String?
   toStatus      String
@@ -451,6 +458,8 @@ model TransactionLog {
 
   transaction Transaction @relation(fields: [transactionId], references: [id])
 
+  @@index([tenantId])
+  @@index([tenantId, transactionId])
   @@map("transaction_logs")
 }
 

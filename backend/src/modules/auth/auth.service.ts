@@ -252,6 +252,19 @@ export class AuthService {
     return user.tenant;
   }
 
+  static async deleteMe(userId: string) {
+    await prisma.$transaction([
+      prisma.refreshTokenSession.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: { isActive: false, deletedAt: new Date() },
+      }),
+    ]);
+  }
+
   static async registerTenant(data: {
     name: string;
     code: string;

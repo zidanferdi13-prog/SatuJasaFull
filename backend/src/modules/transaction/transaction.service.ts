@@ -264,6 +264,7 @@ export class TransactionService {
           items: {
             create: items.map(({ feeDetails, documentChecklist, vehicleTypeCode, provinceCode, ...item }) => ({
               ...item,
+              tenantId,
               feeDetails: { create: feeDetails },
               documentChecklist: { create: documentChecklist },
             })),
@@ -285,13 +286,14 @@ export class TransactionService {
       });
 
       await prismaT.transactionLog.create({
-        data: { transactionId: transaction.id, toStatus: 'DRAFT', createdBy: userId },
+        data: { tenantId, transactionId: transaction.id, toStatus: 'DRAFT', createdBy: userId },
       });
 
       // Record DP payment if provided
       if (data.dpAmount > 0) {
         await prismaT.payment.create({
           data: {
+            tenantId,
             transactionId: transaction.id,
             amount: data.dpAmount,
             type: 'DP',
@@ -352,7 +354,7 @@ export class TransactionService {
       });
 
       await prismaT.transactionLog.create({
-        data: { transactionId: id, fromStatus: tx.status, toStatus, notes, createdBy: userId },
+        data: { tenantId, transactionId: id, fromStatus: tx.status, toStatus, notes, createdBy: userId },
       });
 
       return result;
@@ -429,7 +431,7 @@ export class TransactionService {
       });
 
       await prismaT.transactionLog.create({
-        data: { transactionId: id, fromStatus: 'COMPLETED', toStatus: 'CLOSED', createdBy: userId },
+        data: { tenantId, transactionId: id, fromStatus: 'COMPLETED', toStatus: 'CLOSED', createdBy: userId },
       });
 
       return result;

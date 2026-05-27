@@ -76,6 +76,26 @@ export class AuthController {
     return sendSuccess(res, null, 'Logged out successfully');
   }
 
+  static async deleteMe(req: Request, res: Response, next: NextFunction) {
+    try {
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.startsWith('Bearer ')
+        ? authHeader.split(' ')[1]
+        : req.cookies?.token;
+
+      await AuthService.deleteMe(req.user!.user_id);
+
+      if (req.user?.jti && token) {
+        await redis.set(`blocklist:${req.user.jti}`, '1', 'EX', getTokenTtlSeconds(token));
+      }
+
+      clearAuthCookies(res);
+      return sendSuccess(res, null, 'Account deleted successfully');
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async me(req: Request, res: Response, next: NextFunction) {
     try {
       const user = await AuthService.me(req.user!.user_id);

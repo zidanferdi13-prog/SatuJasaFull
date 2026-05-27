@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { errorMiddleware } from './shared/middleware/error.middleware';
+import logger from './shared/logger';
 import { globalLimiter } from './shared/middleware/rate-limit.middleware';
 import { env } from './config/env';
 import apiRouter from './routes';
@@ -13,16 +14,41 @@ const app = express();
 
 // ─── Security ────────────────────────────────────────────────────────────────
 
-app.use(helmet());
+const allowedOrigins = env.ALLOWED_ORIGINS
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const cspConnectSources = ["'self'", ...allowedOrigins];
 
-const allowedOrigins = env.ALLOWED_ORIGINS.split(',');
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      fontSrc: ["'self'", 'https:', 'data:'],
+      formAction: ["'self'"],
+      frameAncestors: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'self'"],
+      scriptSrcAttr: ["'none'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      connectSrc: cspConnectSources,
+      upgradeInsecureRequests: env.NODE_ENV === 'production' ? [] : null,
+    },
+  },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else {
-      callback(new Error('CORS: Origin not allowed'));
+      return;
     }
+
+    logger.warn('Blocked CORS origin', { origin });
+    callback(new Error('CORS: Origin not allowed'));
   },
   credentials: true,
 }));

@@ -40,7 +40,7 @@ export class PaymentService {
 
     return prisma.$transaction(async (prismaT) => {
       const payment = await prismaT.payment.create({
-        data: { transactionId, ...data },
+        data: { tenantId, transactionId, ...data },
       });
 
       // Update remaining amount

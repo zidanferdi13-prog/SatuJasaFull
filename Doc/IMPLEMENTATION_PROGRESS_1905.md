@@ -8,8 +8,9 @@ Dokumen ini mencatat posisi implementasi terakhir dari roadmap audit `Doc/LAST_A
 
 Progress saat ini berada di **Phase B — HIGH**, tepatnya:
 
-- **B1 sampai B10 sudah selesai**
-- **B11 sedang akan dimulai: Privacy Policy publik + account deletion endpoint**
+- **B1 sampai B15 sudah selesai**
+- **Phase B checkpoint full verification sudah selesai**
+- **Phase C — MEDIUM siap dimulai berikutnya**
 
 ## Phase A — CRITICAL — SELESAI
 
@@ -152,19 +153,19 @@ Catatan B7:
 
 Berhenti di:
 
-- **Phase B — B11: Privacy Policy publik + account deletion endpoint**
+- **Phase C — MEDIUM siap dimulai**
 
 Belum dikerjakan:
 
 - [x] B8. Sinkronkan README
 - [x] B9. Tambah CI pipeline minimal
 - [x] B10. Setup Sentry backend + mobile
-- [ ] B11. Privacy Policy publik + account deletion endpoint
-- [ ] B12. Adaptive icon Android
-- [ ] B13. Backend Dockerfile multi-stage + USER node + HEALTHCHECK
-- [ ] B14. Denormalize `tenantId` di `TransactionItem`, `Payment`, `TransactionLog`
-- [ ] B15. CORS + Helmet CSP hardening
-- [ ] Phase B checkpoint full verification
+- [x] B11. Privacy Policy publik + account deletion endpoint
+- [x] B12. Adaptive icon Android
+- [x] B13. Backend Dockerfile multi-stage + USER node + HEALTHCHECK
+- [x] B14. Denormalize `tenantId` di `TransactionItem`, `Payment`, `TransactionLog`
+- [x] B15. CORS + Helmet CSP hardening
+- [x] Phase B checkpoint full verification
 
 ## Next Plan Detail
 
@@ -212,13 +213,96 @@ Catatan B10:
 - `npm install` mobile melaporkan 42 vulnerabilities dari dependency tree.
 - `npm audit fix` / `npm audit fix --force` **belum dijalankan** karena bisa breaking.
 
-### B11-B15 Ringkas
+### B11. Privacy Policy publik + account deletion endpoint — SELESAI
 
-- B11: Privacy page + `DELETE /auth/me`
-- B12: Adaptive icon Android
-- B13: Dockerfile backend multi-stage + non-root user + healthcheck
-- B14: Denormalize `tenantId` di tabel anak
-- B15: CORS strict + Helmet CSP
+- [x] Halaman publik privacy policy dibuat di frontend route `/privacy`
+- [x] Endpoint `DELETE /api/v1/auth/me` ditambahkan
+- [x] Account deletion memakai soft delete: `isActive=false` + `deletedAt`
+- [x] Refresh token sessions user direvoke saat akun dihapus
+- [x] Current access token diblocklist di Redis saat akun dihapus
+- [x] Auth cookies dibersihkan setelah akun dihapus
+- [x] Backend `typecheck` pass
+- [x] Frontend `typecheck` pass
+- [x] Backend `test` pass: 12 tests
+
+### B12. Adaptive icon Android — SELESAI
+
+- [x] `mobile/app.json` ditambahkan `android.adaptiveIcon`
+- [x] `foregroundImage` memakai asset existing `./assets/icon.png`
+- [x] `backgroundColor` diset `#FFFFFF`
+- [x] Mobile `typecheck` pass
+
+Catatan B12:
+
+- Asset khusus `mobile/assets/adaptive-icon.png` belum ada, jadi konfigurasi memakai `icon.png` agar adaptive icon Android sudah aktif tanpa menambah asset baru.
+
+### B13. Backend Dockerfile multi-stage + USER node + HEALTHCHECK — SELESAI
+
+- [x] `backend/Dockerfile` direfactor menjadi multi-stage: `deps`, `builder`, `runtime`
+- [x] Runtime image hanya membawa production dependencies, `dist`, `prisma`, dan `public`
+- [x] Runtime berjalan sebagai `USER node`
+- [x] Storage directory dibuat dan ownership diset ke `node`
+- [x] `HEALTHCHECK` ditambahkan ke endpoint `/health`
+- [x] Backend `typecheck` pass
+- [x] Backend `build` pass
+- [x] Docker image build pass: `jasaku-backend:b13`
+
+Catatan B13:
+
+- Docker build masih melaporkan npm audit vulnerabilities dari dependency tree; `npm audit fix` / `--force` belum dijalankan karena bisa breaking.
+
+### B14. Denormalize `tenantId` di tabel anak — SELESAI
+
+- [x] `TransactionItem.tenantId` ditambahkan + index
+- [x] `Payment.tenantId` ditambahkan + index
+- [x] `TransactionLog.tenantId` ditambahkan + index
+- [x] Migration `20260527000100_denormalize_transaction_child_tenant` dibuat
+- [x] Migration melakukan backfill `tenantId` dari parent `transactions`
+- [x] Create transaction item sekarang mengisi `tenantId`
+- [x] Create payment sekarang mengisi `tenantId`
+- [x] Create transaction log sekarang mengisi `tenantId`
+- [x] Prisma client generated
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 12 tests
+
+Catatan B14:
+
+- Migration belum diaplikasikan ke DB lokal pada step ini; jalankan `cd backend && npx prisma migrate deploy && npx prisma generate` saat DB siap.
+
+### B15. CORS + Helmet CSP hardening — SELESAI
+
+- [x] `ALLOWED_ORIGINS` diparse strict dengan trim/filter
+- [x] Origin tanpa header tetap diizinkan untuk non-browser/server-to-server request
+- [x] Origin browser yang tidak whitelist akan ditolak
+- [x] Origin yang ditolak dicatat via logger warning
+- [x] Helmet CSP eksplisit ditambahkan:
+  - `defaultSrc 'self'`
+  - `baseUri 'self'`
+  - `objectSrc 'none'`
+  - `frameAncestors 'self'`
+  - `connectSrc 'self'` + origin whitelist
+  - `upgradeInsecureRequests` hanya production
+- [x] Cross origin resource policy diset `cross-origin` agar static uploads/public tetap bisa diakses sesuai kebutuhan aplikasi
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 12 tests
+- [x] Backend `build` pass
+
+### Phase B Checkpoint — SELESAI
+
+- [x] Migration B14 applied ke DB lokal: `20260527000100_denormalize_transaction_child_tenant`
+- [x] Prisma client generated
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 12 tests
+- [x] Backend `build` pass
+- [x] Backend `lint` pass dengan 0 error dan 3 warning existing
+- [x] Frontend `typecheck` pass
+- [x] Mobile `typecheck` pass
+
+Catatan checkpoint:
+
+- Warning lint backend masih non-blocking di:
+  - `backend/src/modules/tenant/tenant.routes.ts`
+  - `backend/src/modules/transaction/transaction.service.ts`
 
 ## Verification Commands Terakhir yang Sudah Lolos
 
@@ -252,6 +336,7 @@ Sudah applied ke DB:
 - `20260519000300_add_soft_delete_fields`
 - `20260519000400_add_refresh_token_sessions`
 - `20260519000500_add_user_device_tokens`
+- `20260527000100_denormalize_transaction_child_tenant`
 
 Perintah terakhir:
 
