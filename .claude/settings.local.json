@@ -12,7 +12,12 @@
       "Bash(git -C mobile reset)",
       "Bash(git rm *)",
       "Bash(git -C mobile branch --show-current)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(claude skill *)",
+      "WebFetch(domain:github.com)",
+      "Bash(mktemp -d)",
+      "Read(//tmp/tmp.mJLBy2tThR/claude-code-kit/**)",
+      "Bash(claude plugin *)"
     ]
   }
 }
