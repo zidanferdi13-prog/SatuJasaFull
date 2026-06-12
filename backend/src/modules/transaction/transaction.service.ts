@@ -1,5 +1,5 @@
 import prisma from '../../config/prisma';
-import { getPagination } from '../../shared/utils/pagination';
+import { getPagination, getSort } from '../../shared/utils/pagination';
 import { generateInvoiceNumber, generateTrackingCode } from '../../shared/utils/invoice';
 import { STATUS_TRANSITIONS } from '../../shared/constants';
 import { enqueueWhatsApp } from '../../shared/services/whatsapp.service';
@@ -9,6 +9,7 @@ import { BranchService } from '../branch/branch.service';
 const TX_INCLUDE = {
   customer: { select: { id: true, name: true, phone: true } },
   branch: { select: { id: true, name: true } },
+  assignedTo: { select: { id: true, name: true, email: true } },
   items: {
     include: {
       vehicle: { select: { id: true, plateNumber: true, brand: true, model: true } },
@@ -22,6 +23,15 @@ const TX_INCLUDE = {
 };
 
 const SERVICE_COMPONENTS = new Set(['JASA_BIRO']);
+
+const TRANSACTION_SORT_FIELDS = {
+  created_at: 'createdAt',
+  updated_at: 'updatedAt',
+  invoice_number: 'invoiceNumber',
+  status: 'status',
+  estimated_total: 'estimatedTotal',
+  final_total: 'finalTotal',
+} as const;
 
 const numberValue = (value: unknown) => Number(value || 0);
 
@@ -205,9 +215,7 @@ export class TransactionService {
       ];
     }
 
-    // Sorting
-    const [sortField, sortDir] = (query.sort || 'created_at:desc').split(':');
-    const orderBy: any = { [sortField === 'created_at' ? 'createdAt' : sortField]: sortDir || 'desc' };
+    const orderBy = getSort(query.sort, TRANSACTION_SORT_FIELDS, 'created_at');
 
     const [total, transactions] = await Promise.all([
       prisma.transaction.count({ where }),
@@ -216,6 +224,7 @@ export class TransactionService {
         include: {
           customer: { select: { id: true, name: true, phone: true } },
           branch: { select: { id: true, name: true } },
+          assignedTo: { select: { id: true, name: true, email: true } },
           items: {
             include: {
               vehicle: true,
@@ -432,6 +441,82 @@ export class TransactionService {
 
       await prismaT.transactionLog.create({
         data: { tenantId, transactionId: id, fromStatus: 'COMPLETED', toStatus: 'CLOSED', createdBy: userId },
+      });
+
+      return result;
+    });
+  }
+
+  static async cancel(id: string, tenantId: string, userId: string, reason: string) {
+    const tx = await prisma.transaction.findFirst({ where: { id, tenantId } });
+    if (!tx) throw Object.assign(new Error('Transaction not found'), { statusCode: 404 });
+
+    if (tx.status === 'CLOSED' || tx.status === 'CANCELLED') {
+      throw Object.assign(new Error('Closed or cancelled transactions cannot be cancelled'), { statusCode: 422 });
+    }
+
+    const dpPaid = Number(tx.dpAmount);
+
+    return prisma.$transaction(async (prismaT) => {
+      const result = await prismaT.transaction.update({
+        where: { id },
+        data: {
+          status: 'CANCELLED',
+          remainingAmount: 0,
+          refundAmount: dpPaid,
+          notes: reason,
+        },
+        include: TX_INCLUDE,
+      });
+
+      if (dpPaid > 0) {
+        await prismaT.payment.create({
+          data: {
+            tenantId,
+            transactionId: id,
+            amount: dpPaid,
+            type: 'REFUND',
+            method: 'CASH',
+            notes: 'Refund on transaction cancellation',
+          },
+        });
+      }
+
+      await prismaT.transactionLog.create({
+        data: { tenantId, transactionId: id, fromStatus: tx.status, toStatus: 'CANCELLED', notes: reason, createdBy: userId },
+      });
+
+      return result;
+    });
+  }
+
+  static async assign(id: string, tenantId: string, userId: string, assignedToUserId: string | null) {
+    const tx = await prisma.transaction.findFirst({ where: { id, tenantId } });
+    if (!tx) throw Object.assign(new Error('Transaction not found'), { statusCode: 404 });
+
+    if (assignedToUserId) {
+      const assignee = await prisma.user.findFirst({
+        where: { id: assignedToUserId, tenantId, isActive: true, deletedAt: null },
+      });
+      if (!assignee) throw Object.assign(new Error('Assignee not found or inactive'), { statusCode: 404 });
+    }
+
+    return prisma.$transaction(async (prismaT) => {
+      const result = await prismaT.transaction.update({
+        where: { id },
+        data: { assignedToUserId },
+        include: TX_INCLUDE,
+      });
+
+      await prismaT.transactionLog.create({
+        data: {
+          tenantId,
+          transactionId: id,
+          fromStatus: tx.status,
+          toStatus: tx.status,
+          notes: assignedToUserId ? `Assigned to user ${assignedToUserId}` : 'Assignment cleared',
+          createdBy: userId,
+        },
       });
 
       return result;

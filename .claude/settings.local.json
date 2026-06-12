@@ -5,7 +5,14 @@
       "Bash(npm init *)",
       "Bash(npm install *)",
       "Bash(npm run *)",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "Bash(git -C mobile init)",
+      "Bash(git -C mobile add .)",
+      "Bash(git -C mobile status --short)",
+      "Bash(git -C mobile reset)",
+      "Bash(git rm *)",
+      "Bash(git -C mobile branch --show-current)",
+      "Bash(git *)"
     ]
   }
 }

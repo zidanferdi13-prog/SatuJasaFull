@@ -19,7 +19,7 @@ export class PricingController {
 
   static async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const rule = await PricingService.update(req.params.id, req.user!.tenant_id, req.body);
+      const rule = await PricingService.update(req.params.id, req.user!.tenant_id, req.user!.user_id, req.body);
       return sendSuccess(res, rule);
     } catch (err) { next(err); }
   }

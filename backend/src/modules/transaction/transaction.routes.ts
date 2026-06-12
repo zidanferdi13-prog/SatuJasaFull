@@ -9,6 +9,8 @@ import {
   createTransactionSchema,
   updateTransactionStatusSchema,
   finalizeTransactionSchema,
+  cancelTransactionSchema,
+  assignTransactionSchema,
   updateDocumentChecklistSchema,
 } from './transaction.schema';
 import { createPaymentSchema } from '../payment/payment.schema';
@@ -24,6 +26,8 @@ router.post('/', validate(createTransactionSchema), TransactionController.create
 router.get('/:id', TransactionController.getOne);
 router.patch('/:id/status', validate(updateTransactionStatusSchema), TransactionController.updateStatus);
 router.post('/:id/finalize', validate(finalizeTransactionSchema), TransactionController.finalize);
+router.post('/:id/cancel', validate(cancelTransactionSchema), TransactionController.cancel);
+router.patch('/:id/assign', validate(assignTransactionSchema), TransactionController.assign);
 router.post('/:id/close', TransactionController.close);
 router.patch('/:id/document-checklist/:checklistId', validate(updateDocumentChecklistSchema), TransactionController.updateDocumentChecklist);
 router.get('/:id/invoice', TransactionController.getInvoice);

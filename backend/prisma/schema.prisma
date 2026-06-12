@@ -27,6 +27,7 @@ enum TransactionStatus {
   READY_TO_PICKUP
   COMPLETED
   CLOSED
+  CANCELLED
 }
 
 enum PaymentType {
@@ -37,6 +38,10 @@ enum PaymentType {
 
 enum PaymentMethod {
   CASH
+  TRANSFER
+  QRIS
+  VA
+  EDC
 }
 
 enum WhatsappStatus {
@@ -71,6 +76,7 @@ model Tenant {
   transactionDocuments TransactionDocument[]
   serviceTypes     ServiceType[]
   pricingRules     PricingRule[]
+  pricingRuleHistories PricingRuleHistory[]
   masterFeeRules   MasterFeeRule[]
   documentRequirements MasterServiceDocumentRequirement[]
   invoiceSequences InvoiceSequence[]
@@ -120,6 +126,8 @@ model User {
   auditLogs AuditLog[]
   refreshTokenSessions RefreshTokenSession[]
   deviceTokens UserDeviceToken[]
+  assignedTransactions Transaction[] @relation("TransactionAssignee")
+  pricingRuleHistories PricingRuleHistory[]
 
   @@index([tenantId])
   @@index([deletedAt])
@@ -190,6 +198,7 @@ model ServiceType {
 
   transactionItems TransactionItem[]
   pricingRules         PricingRule[]
+  pricingRuleHistories PricingRuleHistory[]
   masterFeeRules      MasterFeeRule[]
   documentRequirements MasterServiceDocumentRequirement[]
 
@@ -282,8 +291,9 @@ model PricingRule {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id])
-  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
+  tenant      Tenant               @relation(fields: [tenantId], references: [id])
+  serviceType ServiceType          @relation(fields: [serviceTypeId], references: [id])
+  histories   PricingRuleHistory[]
 
   @@unique([tenantId, serviceTypeId])
   @@index([tenantId])
@@ -291,11 +301,38 @@ model PricingRule {
   @@map("pricing_rules")
 }
 
+model PricingRuleHistory {
+  id            String   @id @default(uuid())
+  tenantId      String
+  pricingRuleId String
+  serviceTypeId String
+  oldPrice      Decimal  @db.Decimal(15, 2)
+  newPrice      Decimal  @db.Decimal(15, 2)
+  oldMargin     Decimal  @db.Decimal(15, 2)
+  newMargin     Decimal  @db.Decimal(15, 2)
+  oldIsActive   Boolean
+  newIsActive   Boolean
+  changedBy     String?
+  createdAt     DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  pricingRule PricingRule @relation(fields: [pricingRuleId], references: [id], onDelete: Cascade)
+  serviceType ServiceType @relation(fields: [serviceTypeId], references: [id])
+  user        User?       @relation(fields: [changedBy], references: [id])
+
+  @@index([tenantId])
+  @@index([pricingRuleId])
+  @@index([serviceTypeId])
+  @@index([changedBy])
+  @@map("pricing_rule_histories")
+}
+
 model Transaction {
   id                  String            @id @default(uuid())
   tenantId            String
   branchId            String
   customerId          String
+  assignedToUserId    String?
   invoiceNumber       String            @unique
   trackingCode        String            @unique
   status              TransactionStatus @default(DRAFT)
@@ -316,12 +353,14 @@ model Transaction {
   tenant   Tenant   @relation(fields: [tenantId], references: [id])
   branch   Branch   @relation(fields: [branchId], references: [id])
   customer Customer @relation(fields: [customerId], references: [id])
+  assignedTo User?  @relation("TransactionAssignee", fields: [assignedToUserId], references: [id])
 
   items    TransactionItem[]
   payments Payment[]
   logs     TransactionLog[]
 
   @@index([tenantId])
+  @@index([assignedToUserId])
   @@index([branchId])
   @@index([status])
   @@index([invoiceNumber])
@@ -421,8 +460,9 @@ model Payment {
   transactionId String
   amount        Decimal       @db.Decimal(15, 2)
   type          PaymentType
-  method        PaymentMethod @default(CASH)
-  notes         String?
+  method          PaymentMethod @default(CASH)
+  referenceNumber String?
+  notes           String?
   createdAt     DateTime      @default(now())
 
   transaction Transaction @relation(fields: [transactionId], references: [id])

@@ -7,10 +7,13 @@ import path from 'path';
 import { errorMiddleware } from './shared/middleware/error.middleware';
 import logger from './shared/logger';
 import { globalLimiter } from './shared/middleware/rate-limit.middleware';
+import { requestIdMiddleware } from './shared/middleware/request-id.middleware';
 import { env } from './config/env';
 import apiRouter from './routes';
 
 const app = express();
+
+app.use(requestIdMiddleware);
 
 // ─── Security ────────────────────────────────────────────────────────────────
 

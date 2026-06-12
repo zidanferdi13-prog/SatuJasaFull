@@ -18,13 +18,32 @@ export class PricingService {
     });
   }
 
-  static async update(id: string, tenantId: string, data: { price?: number; marginAmount?: number; isActive?: boolean }) {
+  static async update(id: string, tenantId: string, userId: string, data: { price?: number; marginAmount?: number; isActive?: boolean }) {
     const rule = await prisma.pricingRule.findFirst({ where: { id, tenantId } });
     if (!rule) throw Object.assign(new Error('Pricing rule not found'), { statusCode: 404 });
 
     const price = data.marginAmount ?? data.price;
     const payload = price === undefined ? data : { ...data, price, marginAmount: price };
 
-    return prisma.pricingRule.update({ where: { id }, data: payload });
+    return prisma.$transaction(async (prismaT) => {
+      const updated = await prismaT.pricingRule.update({ where: { id }, data: payload });
+
+      await prismaT.pricingRuleHistory.create({
+        data: {
+          tenantId,
+          pricingRuleId: id,
+          serviceTypeId: rule.serviceTypeId,
+          oldPrice: rule.price,
+          newPrice: updated.price,
+          oldMargin: rule.marginAmount,
+          newMargin: updated.marginAmount,
+          oldIsActive: rule.isActive,
+          newIsActive: updated.isActive,
+          changedBy: userId,
+        },
+      });
+
+      return updated;
+    });
   }
 }

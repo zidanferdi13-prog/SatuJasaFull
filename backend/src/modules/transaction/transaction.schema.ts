@@ -37,6 +37,18 @@ export const finalizeTransactionSchema = z.object({
   }),
 });
 
+export const cancelTransactionSchema = z.object({
+  body: z.object({
+    reason: z.string().trim().min(1, 'Cancellation reason is required'),
+  }),
+});
+
+export const assignTransactionSchema = z.object({
+  body: z.object({
+    assignedToUserId: z.string().uuid().nullable(),
+  }),
+});
+
 export const updateDocumentChecklistSchema = z.object({
   body: z.object({
     isChecked: z.boolean(),

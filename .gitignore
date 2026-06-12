@@ -52,6 +52,7 @@ coverage/
 *.sqlite3
 
 # Mobile
+/mobile/
 *.apk
 *.ipa
 *.jks

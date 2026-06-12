@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import swaggerUi from 'swagger-ui-express';
+import { openApiDocument } from './docs/openapi';
 import authRoutes from './modules/auth/auth.routes';
 import tenantRoutes from './modules/tenant/tenant.routes';
 import branchRoutes from './modules/branch/branch.routes';
@@ -15,6 +17,9 @@ import exportRoutes from './modules/export/export.routes';
 import auditRoutes from './modules/audit/audit.routes';
 
 const router = Router();
+
+router.get('/docs.json', (_req, res) => res.json(openApiDocument));
+router.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
 
 router.use('/auth', authRoutes);
 router.use('/tenants', tenantRoutes);

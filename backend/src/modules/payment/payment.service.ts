@@ -1,5 +1,7 @@
 import prisma from '../../config/prisma';
 
+const NON_CASH_METHODS = new Set(['TRANSFER', 'QRIS', 'VA', 'EDC']);
+
 export class PaymentService {
   static async list(transactionId: string, tenantId: string) {
     const tx = await prisma.transaction.findFirst({ where: { id: transactionId, tenantId } });
@@ -20,6 +22,14 @@ export class PaymentService {
 
     if (tx.status === 'CLOSED') {
       throw Object.assign(new Error('Cannot add payment to a closed transaction'), { statusCode: 422 });
+    }
+
+    // Validate non-cash needs referenceNumber
+    if (NON_CASH_METHODS.has(data.method) && !data.referenceNumber?.trim()) {
+      throw Object.assign(
+        new Error('Reference number is required for non-cash payments'),
+        { statusCode: 422 }
+      );
     }
 
     // Validate payment type & amount

@@ -6,11 +6,11 @@ Dokumen ini mencatat posisi implementasi terakhir dari roadmap audit `Doc/LAST_A
 
 ## Status Umum
 
-Progress saat ini berada di **Phase B — HIGH**, tepatnya:
+Progress saat ini berada di **Phase C — MEDIUM**, tepatnya:
 
-- **B1 sampai B15 sudah selesai**
-- **Phase B checkpoint full verification sudah selesai**
-- **Phase C — MEDIUM siap dimulai berikutnya**
+- **Phase B B1 sampai B15 + checkpoint sudah selesai**
+- **C1 sampai C9 sudah selesai**
+- **C10 sedang akan dimulai: Audit middleware capture `before`**
 
 ## Phase A — CRITICAL — SELESAI
 
@@ -41,7 +41,7 @@ Verifikasi Phase A terakhir:
 - [x] Frontend `typecheck` pass
 - [x] Mobile `typecheck` pass
 
-## Phase B — HIGH — BERJALAN
+## Phase B — HIGH — SELESAI
 
 ### B1. WhatsApp provider nyata — SELESAI
 
@@ -153,7 +153,7 @@ Catatan B7:
 
 Berhenti di:
 
-- **Phase C — MEDIUM siap dimulai**
+- **Phase C — C10: Audit middleware capture `before`**
 
 Belum dikerjakan:
 
@@ -166,6 +166,20 @@ Belum dikerjakan:
 - [x] B14. Denormalize `tenantId` di `TransactionItem`, `Payment`, `TransactionLog`
 - [x] B15. CORS + Helmet CSP hardening
 - [x] Phase B checkpoint full verification
+- [x] C1. `sortField` whitelist + `limit` guard
+- [x] C2. `TransactionStatus.CANCELLED`
+- [x] C3. Assignment PIC
+- [x] C4. Payment methods baru
+- [x] C5. Pricing history versioned
+- [x] C6. Request ID middleware + correlation log
+- [x] C7. OpenAPI dari Zod
+- [x] C8. Frontend Error Boundary
+- [x] C9. Mobile offline TanStack Query persist
+- [ ] C10. Audit middleware capture `before`
+- [ ] C11. ESLint + Prettier shared + husky + lint-staged
+- [ ] C12. Mount/cleanup modul belum di-wire
+- [ ] C13. Helmet limits + JSON body size
+- [ ] Phase C checkpoint full verification
 
 ## Next Plan Detail
 
@@ -304,6 +318,148 @@ Catatan checkpoint:
   - `backend/src/modules/tenant/tenant.routes.ts`
   - `backend/src/modules/transaction/transaction.service.ts`
 
+## Phase C — MEDIUM — BERJALAN
+
+### C1. `sortField` whitelist + `limit` guard — SELESAI
+
+- [x] `getPagination()` sudah membatasi `limit` maksimal 100
+- [x] Helper `getSort()` ditambahkan di `backend/src/shared/utils/pagination.ts`
+- [x] Sort field transaksi di-whitelist:
+  - `created_at`
+  - `updated_at`
+  - `invoice_number`
+  - `status`
+  - `estimated_total`
+  - `final_total`
+- [x] Sort field invalid akan menghasilkan error 400
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 12 tests
+- [x] Backend `build` pass
+
+### C2. `TransactionStatus.CANCELLED` — SELESAI
+
+- [x] Enum Prisma `TransactionStatus.CANCELLED` ditambahkan
+- [x] Migration `20260527000200_add_cancelled_transaction_status` dibuat dan applied ke DB lokal
+- [x] Constants status/transitions ditambahkan untuk `CANCELLED`
+- [x] Endpoint `POST /api/v1/transactions/:id/cancel` ditambahkan
+- [x] Schema cancel mewajibkan `reason`
+- [x] Service cancel menolak transaksi `CLOSED`/`CANCELLED`
+- [x] Service cancel set `remainingAmount=0`, `refundAmount=dpAmount`, dan `notes=reason`
+- [x] Jika ada DP, service membuat payment `REFUND`
+- [x] Transaction log `CANCELLED` dibuat dengan alasan
+- [x] Test lifecycle cancel ditambahkan
+- [x] Prisma client generated
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 14 tests
+- [x] Backend `build` pass
+
+### C3. Assignment PIC — SELESAI
+
+- [x] `Transaction.assignedToUserId` ditambahkan
+- [x] Relasi optional `Transaction.assignedTo` ke `User` ditambahkan
+- [x] Index `transactions_assignedToUserId_idx` ditambahkan
+- [x] Migration `20260527000300_add_transaction_assignee` dibuat dan applied ke DB lokal
+- [x] Endpoint `PATCH /api/v1/transactions/:id/assign` ditambahkan
+- [x] Schema assign menerima UUID user aktif atau `null` untuk clear assignment
+- [x] Service assign memvalidasi assignee tenant sama, aktif, dan belum soft-deleted
+- [x] Transaction list/detail include data assignee
+- [x] Transaction log dibuat saat assignment diubah atau dibersihkan
+- [x] Test lifecycle assignment ditambahkan
+- [x] Prisma client generated
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 16 tests
+- [x] Backend `build` pass
+
+### C4. Payment methods baru — SELESAI
+
+- [x] Enum Prisma `PaymentMethod` diperluas menjadi `CASH`, `TRANSFER`, `QRIS`, `VA`, `EDC`
+- [x] Field `Payment.referenceNumber` ditambahkan
+- [x] Migration `20260527000400_add_payment_methods` dibuat dan applied ke DB lokal
+- [x] Schema payment menerima method baru
+- [x] Schema payment mewajibkan `referenceNumber` untuk pembayaran non-cash
+- [x] Service payment mewajibkan `referenceNumber` untuk pembayaran non-cash
+- [x] Test payment methods ditambahkan
+- [x] Prisma client generated
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 20 tests
+- [x] Backend `build` pass
+
+### C5. Pricing history versioned — SELESAI
+
+- [x] Model `PricingRuleHistory` ditambahkan
+- [x] Relasi history ke `Tenant`, `PricingRule`, `ServiceType`, dan `User` ditambahkan
+- [x] Migration `20260527000500_add_pricing_rule_history` dibuat dan applied ke DB lokal
+- [x] Update pricing sekarang menyimpan snapshot sebelum/sesudah
+- [x] History menyimpan harga lama, harga baru, margin lama, margin baru, status lama, status baru, dan aktor perubahan
+- [x] Test pricing history ditambahkan
+- [x] Prisma client generated
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 22 tests
+- [x] Backend `build` pass
+
+### C6. Request ID middleware + correlation log — SELESAI
+
+- [x] Request context AsyncLocalStorage ditambahkan
+- [x] Middleware request ID ditambahkan
+- [x] Incoming `X-Request-Id` dipakai jika tersedia
+- [x] Request ID baru dibuat otomatis jika header tidak tersedia
+- [x] Response header `X-Request-Id` diset untuk semua request
+- [x] Logger Winston otomatis menambahkan `requestId` ke metadata log saat ada request context
+- [x] Test request ID middleware ditambahkan
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 24 tests
+- [x] Backend `build` pass
+
+### C7. OpenAPI dari Zod — SELESAI
+
+- [x] Dependency `@asteasolutions/zod-to-openapi` ditambahkan
+- [x] Dependency `swagger-ui-express` dan types ditambahkan
+- [x] Generator OpenAPI dibuat dari Zod schema existing
+- [x] Security scheme Bearer JWT ditambahkan ke OpenAPI
+- [x] Endpoint JSON docs tersedia di `/api/v1/docs.json`
+- [x] Swagger UI tersedia di `/api/v1/docs`
+- [x] Test OpenAPI document ditambahkan
+- [x] Backend `typecheck` pass
+- [x] Backend `test` pass: 25 tests
+- [x] Backend `build` pass
+
+Catatan C7:
+
+- `npm install` backend melaporkan 5 vulnerabilities; `npm audit fix` / `--force` belum dijalankan karena bisa breaking.
+- Dokumentasi awal mencakup endpoint utama yang sudah punya Zod schema dan bisa diperluas per modul.
+
+### C8. Frontend Error Boundary — SELESAI
+
+- [x] Root error boundary ditambahkan di `frontend/src/app/error.tsx`
+- [x] Auth route group error boundary ditambahkan
+- [x] Dashboard route group error boundary ditambahkan
+- [x] Admin route group error boundary ditambahkan
+- [x] Semua fallback punya tombol retry/reset
+- [x] Frontend `typecheck` pass
+
+### C9. Mobile offline TanStack Query persist — SELESAI
+
+- [x] Dependency `@tanstack/react-query-persist-client` ditambahkan
+- [x] Dependency `@tanstack/query-async-storage-persister` ditambahkan
+- [x] AsyncStorage persister dibuat untuk query cache mobile
+- [x] Mobile provider memakai `PersistQueryClientProvider`
+- [x] Query cache disimpan dengan max age 24 jam
+- [x] Mobile `typecheck` pass
+
+Catatan C9:
+
+- `npm install` mobile melaporkan 42 vulnerabilities dari dependency tree; `npm audit fix` / `--force` belum dijalankan karena bisa breaking.
+- Command pertama `npm run typecheck --prefix mobile` sempat gagal karena shell sudah berada di folder `mobile`; retry `npm run typecheck` berhasil.
+
+### C10. Audit middleware capture `before` — NEXT
+
+Rencana berikutnya:
+
+- Audit middleware untuk PATCH/PUT/DELETE mengambil record sebelum write
+- Simpan snapshot `before` ke audit log
+- Pastikan tidak mengganggu endpoint yang sudah punya audit manual
+- Jalankan backend typecheck/test/build
+
 ## Verification Commands Terakhir yang Sudah Lolos
 
 ```bash
@@ -337,6 +493,10 @@ Sudah applied ke DB:
 - `20260519000400_add_refresh_token_sessions`
 - `20260519000500_add_user_device_tokens`
 - `20260527000100_denormalize_transaction_child_tenant`
+- `20260527000200_add_cancelled_transaction_status`
+- `20260527000300_add_transaction_assignee`
+- `20260527000400_add_payment_methods`
+- `20260527000500_add_pricing_rule_history`
 
 Perintah terakhir:
 

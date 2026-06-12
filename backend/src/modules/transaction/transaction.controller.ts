@@ -71,6 +71,30 @@ export class TransactionController {
     } catch (err) { next(err); }
   }
 
+  static async cancel(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tx = await TransactionService.cancel(
+        req.params.id,
+        req.user!.tenant_id,
+        req.user!.user_id,
+        req.body.reason
+      );
+      return sendSuccess(res, tx, 'Transaction cancelled');
+    } catch (err) { next(err); }
+  }
+
+  static async assign(req: Request, res: Response, next: NextFunction) {
+    try {
+      const tx = await TransactionService.assign(
+        req.params.id,
+        req.user!.tenant_id,
+        req.user!.user_id,
+        req.body.assignedToUserId
+      );
+      return sendSuccess(res, tx, 'Transaction assigned');
+    } catch (err) { next(err); }
+  }
+
   static async updateDocumentChecklist(req: Request, res: Response, next: NextFunction) {
     try {
       const tx = await TransactionService.updateDocumentChecklist(
